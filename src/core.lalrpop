@@ -1,0 +1,32 @@
+use crate::core_types::{Program, Statement, Identifier};
+
+grammar;
+
+match {
+    "fn",
+    "main",
+    "(",
+    ")",
+    "{",
+    "}",
+    "let",
+    "=",
+    "b", // TODO
+    r#"[a-zA-Z]([a-zA-Z0-9] | - | _)*"# => ID,
+}
+
+pub Prgr: Program = {
+    "fn" "main" "(" ")" "{"
+        <stmts: Stmt*>
+    "}" => Program {
+        statements: stmts
+    },
+}
+
+Stmt: Statement = {
+    "let" <id: Ident> "=" "b" => Statement::Let(id)
+}
+
+Ident: Identifier = {
+    <id: ID> => Identifier::from(id)
+}
