@@ -1,22 +1,31 @@
-use crate::core_types::{Program, Statement, Identifier};
+use crate::core_types::{Program, Statement, Identifier, Expression};
 
 grammar;
 
 match {
-    "fn",
-    "main",
+    "fn" => FN,
+    "main" => MAIN,
+    "let" => LET,
+    r"false" => FALSE,
+    r"true" => TRUE,
     "(",
     ")",
     "{",
     "}",
-    "let",
     "=",
-    "b", // TODO
-    r#"[a-zA-Z]([a-zA-Z0-9] | - | _)*"# => ID,
+    "+",
+    "-",
+    "*",
+    "/",
+    r"[-]?\d+" => INTEGER,
+    r"\s*" => { }, // The default whitespace skipping is disabled an `ignore pattern` is specified
+    r"//[^\n\r]*[\n\r]*" => { }, // Skip `// comments`
+} else {
+    r"[a-zA-Z]([a-zA-Z0-9]|-|_)*" => ID,
 }
 
 pub Prgr: Program = {
-    "fn" "main" "(" ")" "{"
+    FN MAIN "(" ")" "{"
         <stmts: Stmt*>
     "}" => Program {
         statements: stmts
@@ -24,7 +33,26 @@ pub Prgr: Program = {
 }
 
 Stmt: Statement = {
-    "let" <id: Ident> "=" "b" => Statement::Let(id)
+    LET <id: Ident> "=" <expr: Expr> => Statement::Let(id, expr),
+}
+
+Expr: Expression = {
+    <expa: Expr> "+" <expb: Factor> => Expression::Plus(Box::new(expa), Box::new(expb)),
+    <expa: Expr> "-" <expb: Factor> => Expression::Minus(Box::new(expa), Box::new(expb)),
+    Factor,
+}
+
+Factor: Expression = {
+    <expa: Factor> "*" <expb: Literal> => Expression::Times(Box::new(expa), Box::new(expb)),
+    <expa: Factor> "/" <expb: Literal> => Expression::Divide(Box::new(expa), Box::new(expb)),
+    Literal,
+}
+
+Literal: Expression = {
+    FALSE => Expression::BooleanLiteral(false),
+    TRUE => Expression::BooleanLiteral(true),
+    <num: INTEGER> => Expression::NumberLiteral(num.parse::<i64>().unwrap()),
+    "(" <expr: Expr> ")" => Expression::Parenth(Box::new(expr)),
 }
 
 Ident: Identifier = {
