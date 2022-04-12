@@ -52,7 +52,7 @@ Literal: Expression = {
     FALSE => Expression::BooleanLiteral(false),
     TRUE => Expression::BooleanLiteral(true),
     <num: INTEGER> => Expression::IntegerLiteral(num.parse::<i64>().unwrap()),
-    "(" <expr: Expr> ")",
+    "(" <expr: Expr> ")" => expr,
 }
 
 Ident: Identifier = {

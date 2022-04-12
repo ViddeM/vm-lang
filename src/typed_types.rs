@@ -1,17 +1,34 @@
-use crate::core_types::{Expression, Identifier, Type};
+use crate::core_types::{Identifier, Type};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TypedProgram {
     pub typed_stmts: Vec<TypedStatement>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TypedStatement {
-    Let(Identifier, TypedExpression),
+    Let(Identifier, TypedExpression, Type),
 }
 
-#[derive(Debug)]
-pub struct TypedExpression {
-    expr: Expression,
-    t: Type
+#[derive(Debug, Clone)]
+pub enum TypedExpression {
+    IntegerLiteral(i64),
+    BooleanLiteral(bool),
+    Plus(Box<TypedExpression>, Box<TypedExpression>, Type),
+    Minus(Box<TypedExpression>, Box<TypedExpression>, Type),
+    Times(Box<TypedExpression>, Box<TypedExpression>, Type),
+    Divide(Box<TypedExpression>, Box<TypedExpression>, Type),
+}
+
+impl TypedExpression {
+    pub fn get_type(&self) -> Type {
+        match self {
+            TypedExpression::IntegerLiteral(_) => Type::Integer,
+            TypedExpression::BooleanLiteral(_) => Type::Boolean,
+            TypedExpression::Plus(_, _, t) => t.clone(),
+            TypedExpression::Minus(_, _, t) => t.clone(),
+            TypedExpression::Times(_, _, t) => t.clone(),
+            TypedExpression::Divide(_, _, t) => t.clone(),
+        }
+    }
 }
