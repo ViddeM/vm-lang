@@ -17,6 +17,7 @@ match {
     "-",
     "*",
     "/",
+    ",",
     r"[-]?\d+" => INTEGER,
     r"\s*" => { }, // The default whitespace skipping is disabled an `ignore pattern` is specified
     r"//[^\n\r]*[\n\r]*" => { }, // Skip `// comments`
@@ -34,6 +35,7 @@ pub Prgr: Program = {
 
 Stmt: Statement = {
     LET <id: Ident> "=" <expr: Expr> => Statement::Let(id, expr),
+    <expr: Expr> => Statement::Expression(expr),
 }
 
 Expr: Expression = {
@@ -45,6 +47,11 @@ Expr: Expression = {
 Factor: Expression = {
     <expa: Factor> "*" <expb: Literal> => Expression::Times(Box::new(expa), Box::new(expb)),
     <expa: Factor> "/" <expb: Literal> => Expression::Divide(Box::new(expa), Box::new(expb)),
+    FunctionCall,
+}
+
+FunctionCall: Expression = {
+    <name: ID> "(" <args: Comma<Expr>> ")" => Expression::FunctionCall(String::from(name), args),
     Literal,
 }
 
@@ -58,3 +65,8 @@ Literal: Expression = {
 Ident: Identifier = {
     <id: ID> => Identifier::from(id)
 }
+
+// Generic helper-rule for comma-separated lists (taken from github.com/algebraicdb/algebraicdb)
+Comma<E>: Vec<E> =
+    <v0:(<E> ",")*> <e1:E?> =>
+        v0.into_iter().chain(e1).collect();

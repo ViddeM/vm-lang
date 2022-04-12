@@ -1,4 +1,4 @@
-use crate::core_types::{Identifier, Type};
+use crate::core_types::{Expression, Identifier, Type};
 
 #[derive(Debug, Clone)]
 pub struct TypedProgram {
@@ -8,6 +8,7 @@ pub struct TypedProgram {
 #[derive(Debug, Clone)]
 pub enum TypedStatement {
     Let(Identifier, TypedExpression, Type),
+    Expression(TypedExpression, Type),
 }
 
 #[derive(Debug, Clone)]
@@ -18,6 +19,7 @@ pub enum TypedExpression {
     Minus(Box<TypedExpression>, Box<TypedExpression>, Type),
     Times(Box<TypedExpression>, Box<TypedExpression>, Type),
     Divide(Box<TypedExpression>, Box<TypedExpression>, Type),
+    FunctionCall(Identifier, Vec<TypedExpression>, Type),
 }
 
 impl TypedExpression {
@@ -29,6 +31,7 @@ impl TypedExpression {
             TypedExpression::Minus(_, _, t) => t.clone(),
             TypedExpression::Times(_, _, t) => t.clone(),
             TypedExpression::Divide(_, _, t) => t.clone(),
+            TypedExpression::FunctionCall(_, _, t) => t.clone(),
         }
     }
 }

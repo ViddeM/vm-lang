@@ -1,4 +1,5 @@
 use crate::core_types::{Expression, Identifier, Program, Statement, Type};
+use crate::type_checker::TypeCheckError::NoSuchFunc;
 use crate::typed_types::{TypedExpression, TypedProgram, TypedStatement};
 use std::collections::HashMap;
 
@@ -6,12 +7,15 @@ pub struct TypeCheckEnv {
     // Vec representing the scopes and the hashmap the
     // variables (and their types) within that scope.
     vars: Vec<HashMap<Identifier, Type>>,
+
+    functions: HashMap<Identifier, (Vec<Type>, Type)>,
 }
 
 impl TypeCheckEnv {
     fn new() -> Self {
         TypeCheckEnv {
             vars: vec![HashMap::new()],
+            functions: HashMap::new(),
         }
     }
 
@@ -53,6 +57,12 @@ pub enum TypeCheckError {
     NoScope,
     #[error("Types does not match, expected `{0}`, got `{1}`")]
     TypeMismatch(Type, Type),
+    #[error("No such function exists `{0}`")]
+    NoSuchFunc(Identifier),
+    #[error("Call to func `{0}` has an invalid amount of arguments `{1}`, expected `{2}` args")]
+    ArgLenMissmatch(Identifier, usize, usize),
+    #[error("Invalid argument type in call to function `{0}`, got type `{1}`, expected `{2}`")]
+    ArgTypeMissmatch(Identifier, Type, Type),
 }
 
 pub type TypeCheckResult<T> = Result<T, TypeCheckError>;
@@ -80,6 +90,11 @@ fn type_check_stmt(stmt: Statement, env: &mut TypeCheckEnv) -> TypeCheckResult<T
             env.insert_var(id.clone(), t.clone())?;
             Ok(TypedStatement::Let(id, expr_typed, t))
         }
+        Statement::Expression(expr) => {
+            let expr_typed = type_check_expr(&expr, env)?;
+            let t = expr_typed.get_type();
+            Ok(TypedStatement::Expression(expr_typed, t))
+        }
     }
 }
 
@@ -102,6 +117,50 @@ fn type_check_expr(expr: &Expression, env: &mut TypeCheckEnv) -> TypeCheckResult
         Expression::Divide(a, b) => {
             let (a, b, t) = type_check_arith(a, b, env)?;
             TypedExpression::Divide(a, b, t)
+        }
+        Expression::FunctionCall(name, args) => {
+            let (arg_types, ret_type) = match env.functions.get(name) {
+                Some(vals) => Ok(vals.clone()),
+                None => Err(NoSuchFunc(name.clone())),
+            }?;
+
+            if arg_types.len() != args.len() {
+                return Err(TypeCheckError::ArgLenMissmatch(
+                    name.clone(),
+                    args.len(),
+                    arg_types.len(),
+                ));
+            }
+
+            let typed_args = args
+                .into_iter()
+                .enumerate()
+                .map(|(i, arg)| {
+                    let typed = type_check_expr(arg, env)?;
+                    let expected_type = match arg_types.get(i) {
+                        None => {
+                            return Err(TypeCheckError::ArgLenMissmatch(
+                                name.clone(),
+                                args.len(),
+                                arg_types.len(),
+                            ))
+                        }
+                        Some(a) => a.clone(),
+                    };
+
+                    if typed.get_type() != expected_type {
+                        return Err(TypeCheckError::ArgTypeMissmatch(
+                            name.clone(),
+                            typed.get_type(),
+                            expected_type,
+                        ));
+                    }
+
+                    Ok(typed)
+                })
+                .collect::<TypeCheckResult<Vec<TypedExpression>>>()?;
+
+            TypedExpression::FunctionCall(name.clone(), typed_args, ret_type)
         }
     })
 }

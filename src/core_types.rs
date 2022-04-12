@@ -8,6 +8,7 @@ pub struct Program {
 #[derive(Debug, Clone)]
 pub enum Statement {
     Let(Identifier, Expression),
+    Expression(Expression),
 }
 
 #[derive(Debug, Clone)]
@@ -18,6 +19,7 @@ pub enum Expression {
     Minus(Box<Expression>, Box<Expression>),
     Times(Box<Expression>, Box<Expression>),
     Divide(Box<Expression>, Box<Expression>),
+    FunctionCall(Identifier, Vec<Expression>),
 }
 
 pub type Identifier = String;
