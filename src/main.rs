@@ -1,6 +1,8 @@
 use std::fs;
 
 mod core_types;
+mod type_checker;
+mod typed_types;
 
 use lalrpop_util::lalrpop_mod;
 

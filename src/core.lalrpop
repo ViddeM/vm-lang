@@ -51,8 +51,8 @@ Factor: Expression = {
 Literal: Expression = {
     FALSE => Expression::BooleanLiteral(false),
     TRUE => Expression::BooleanLiteral(true),
-    <num: INTEGER> => Expression::NumberLiteral(num.parse::<i64>().unwrap()),
-    "(" <expr: Expr> ")" => Expression::Parenth(Box::new(expr)),
+    <num: INTEGER> => Expression::IntegerLiteral(num.parse::<i64>().unwrap()),
+    "(" <expr: Expr> ")",
 }
 
 Ident: Identifier = {
