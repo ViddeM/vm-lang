@@ -6,11 +6,11 @@ fn main() {
 
     let var_e = true;
 
-    let var_f = 1 + 2 + 3;
+    let var_f = 1 + 2 + 3; // 6
 
-    let var_h = 1 * 5 + 5 * var_f;
+    let var_h = 1 * 5 + 5 * var_f; // 1 * 5 + 5 * 6 = 15 + 30 = 45
 
-    let var_le = 5 * 3 * 2 + 3 * 1 * 9;
+    let var_le = 5 * 3 * 2 + 3 * 1 * 9; // 5 * 3 * 2 + 3 * 1 * 9 = 5 * 6 + 3 * 9 = 30 + 27 = 57
 
-    print_number(var_le);
+    print_number(var_le); // Should print 57
 }

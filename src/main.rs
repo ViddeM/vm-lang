@@ -5,7 +5,6 @@ mod interpreter;
 mod type_checker;
 mod typed_types;
 
-use crate::type_checker::TypeCheckResult;
 use lalrpop_util::lalrpop_mod;
 
 lalrpop_mod!(pub core);
@@ -18,5 +17,8 @@ fn main() {
     println!("Parsed {:?}\n", parsed);
 
     let type_checked = type_checker::type_check(parsed).unwrap();
-    println!("\n\n\nType checked {:#?}", type_checked)
+    println!("\n\nType checked {:?}\n", type_checked);
+
+    println!("\n\n======Running Program======\n");
+    interpreter::interpret(type_checked).unwrap();
 }

@@ -50,7 +50,7 @@ impl TypeCheckEnv {
     }
 
     fn insert_var(&mut self, id: Identifier, t: Type) -> TypeCheckResult<()> {
-        let mut scope = self.vars.pop().ok_or(TypeCheckError::NoScope)?.to_owned();
+        let mut scope = self.vars.pop().ok_or(TypeCheckError::NoScope)?;
         scope.insert(id, t);
         self.vars.push(scope);
         Ok(())
@@ -73,6 +73,8 @@ pub enum TypeCheckError {
     ArgTypeMissmatch(Identifier, Type, Type),
     #[error("No variable exists with name `{0}`")]
     NoSuchVar(Identifier),
+    #[error("Arithmetic operation with non-number type `{0}`")]
+    ArithInvalidType(Type),
 }
 
 pub type TypeCheckResult<T> = Result<T, TypeCheckError>;
@@ -201,5 +203,10 @@ fn type_check_arith(
     if type_a != type_b {
         return Err(TypeCheckError::TypeMismatch(type_a, type_b));
     }
+
+    if type_a != Type::Integer {
+        return Err(TypeCheckError::ArithInvalidType(type_a));
+    }
+
     Ok((Box::new(typed_a), Box::new(typed_b), type_a))
 }

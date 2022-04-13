@@ -1,4 +1,4 @@
-use crate::core_types::{Expression, Identifier, Type};
+use crate::core_types::{Identifier, Type};
 
 #[derive(Debug, Clone)]
 pub struct TypedProgram {
