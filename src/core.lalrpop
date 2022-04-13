@@ -18,6 +18,7 @@ match {
     "*",
     "/",
     ",",
+    ";",
     r"[-]?\d+" => INTEGER,
     r"\s*" => { }, // The default whitespace skipping is disabled an `ignore pattern` is specified
     r"//[^\n\r]*[\n\r]*" => { }, // Skip `// comments`
@@ -34,8 +35,8 @@ pub Prgr: Program = {
 }
 
 Stmt: Statement = {
-    LET <id: Ident> "=" <expr: Expr> => Statement::Let(id, expr),
-    <expr: Expr> => Statement::Expression(expr),
+    LET <id: Ident> "=" <expr: Expr> ";" => Statement::Let(id, expr),
+    <expr: Expr> ";" => Statement::Expression(expr),
 }
 
 Expr: Expression = {
@@ -59,6 +60,7 @@ Literal: Expression = {
     FALSE => Expression::BooleanLiteral(false),
     TRUE => Expression::BooleanLiteral(true),
     <num: INTEGER> => Expression::IntegerLiteral(num.parse::<i64>().unwrap()),
+    <var: Ident> => Expression::Variable(var),
     "(" <expr: Expr> ")" => expr,
 }
 

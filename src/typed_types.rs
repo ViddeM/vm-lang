@@ -20,6 +20,7 @@ pub enum TypedExpression {
     Times(Box<TypedExpression>, Box<TypedExpression>, Type),
     Divide(Box<TypedExpression>, Box<TypedExpression>, Type),
     FunctionCall(Identifier, Vec<TypedExpression>, Type),
+    Variable(Identifier, Type),
 }
 
 impl TypedExpression {
@@ -32,6 +33,7 @@ impl TypedExpression {
             TypedExpression::Times(_, _, t) => t.clone(),
             TypedExpression::Divide(_, _, t) => t.clone(),
             TypedExpression::FunctionCall(_, _, t) => t.clone(),
+            TypedExpression::Variable(_, t) => t.clone(),
         }
     }
 }

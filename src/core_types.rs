@@ -15,6 +15,7 @@ pub enum Statement {
 pub enum Expression {
     IntegerLiteral(i64),
     BooleanLiteral(bool),
+    Variable(Identifier),
     Plus(Box<Expression>, Box<Expression>),
     Minus(Box<Expression>, Box<Expression>),
     Times(Box<Expression>, Box<Expression>),
@@ -28,6 +29,7 @@ pub type Identifier = String;
 pub enum Type {
     Integer,
     Boolean,
+    Void,
 }
 
 impl Display for Type {
@@ -38,6 +40,7 @@ impl Display for Type {
             match self {
                 Type::Integer => "Integer",
                 Type::Boolean => "Boolean",
+                Type::Void => "Void",
             }
         )
     }

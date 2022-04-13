@@ -1,16 +1,16 @@
 fn main() {
-    let pedero_the_second_and_3d_ALSO_BIG_LETTERS = 15
-    let var_b = -7
-    let var_c = 15301503103513
-    let var_d = false
+    let pedero_the_second_and_3d_ALSO_BIG_LETTERS = 15;
+    let var_b = -7;
+    let var_c = 15301503103513;
+    let var_d = false;
 
-    let var_e = true
+    let var_e = true;
 
-    let var_f = 1 + 2 + 3
+    let var_f = 1 + 2 + 3;
 
-    let var_h = 1 * 5 + 5 * var_f
+    let var_h = 1 * 5 + 5 * var_f;
 
-    let var_le = 5 * 3 * 2 + 3 * 1 * 9
+    let var_le = 5 * 3 * 2 + 3 * 1 * 9;
 
-    print_number(var_le)
+    print_number(var_le);
 }
