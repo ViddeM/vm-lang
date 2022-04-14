@@ -9,6 +9,7 @@ match {
     r"false" => FALSE,
     r"true" => TRUE,
     r"while" => WHILE,
+    r"if" => IF,
     "(",
     ")",
     "{",
@@ -44,6 +45,7 @@ pub Prgr: Program = {
 Stmt: Statement = {
     LET <id: Ident> "=" <expr: Expr> ";" => Statement::Let(id, expr),
     WHILE <expr: Expr> "{" <stmts: Stmt*> "}" => Statement::While(expr, stmts),
+    IF "(" <expr: Expr> ")" "{" <stmts: Stmt*> "}" => Statement::If(expr, stmts),
     <expr: Expr> ";" => Statement::Expression(expr),
 }
 

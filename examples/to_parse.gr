@@ -4,5 +4,9 @@ fn main() {
     while (a <= 5) {
         print_number(a);
         a = a + 1;
+
+        if (a == 2) {
+            print_number(42);
+        }
     }
 }

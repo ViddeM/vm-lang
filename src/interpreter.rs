@@ -137,6 +137,19 @@ fn eval_statement(stmt: &TypedStatement, env: &mut InterpretEnv) -> InterpretRes
                 v => return Err(InterpretError::ValTypeError(Type::Boolean, v)),
             };
         },
+        TypedStatement::If(expr, stmts) => {
+            env.new_scope();
+            match eval_expression(&expr, env)? {
+                Value::Boolean(true) => {
+                    for s in stmts.iter() {
+                        eval_statement(s, env)?;
+                    }
+                }
+                Value::Boolean(false) => {}
+                v => return Err(InterpretError::ValTypeError(Type::Boolean, v)),
+            }
+            env.pop_scope();
+        }
     })
 }
 

@@ -9,6 +9,7 @@ pub struct TypedProgram {
 pub enum TypedStatement {
     Let(Identifier, TypedExpression),
     Expression(TypedExpression),
+    If(TypedExpression, Vec<TypedStatement>),
     While(TypedExpression, Vec<TypedStatement>),
 }
 

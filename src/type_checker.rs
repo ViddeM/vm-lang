@@ -131,6 +131,20 @@ fn type_check_stmt(stmt: Statement, env: &mut TypeCheckEnv) -> TypeCheckResult<T
             env.pop_scope();
             return Ok(TypedStatement::While(expr_typed, typed_stmts));
         }
+        Statement::If(expr, stmts) => {
+            env.new_scope();
+            let expr_typed = type_check_expr(&expr, env)?;
+            let t = expr_typed.get_type();
+            if t != Type::Boolean {
+                return Err(TypeCheckError::TypeMismatch(Type::Boolean, t));
+            }
+            let typed_stmts = stmts
+                .into_iter()
+                .map(|stmt| type_check_stmt(stmt, env))
+                .collect::<TypeCheckResult<Vec<TypedStatement>>>()?;
+            env.pop_scope();
+            return Ok(TypedStatement::If(expr_typed, typed_stmts));
+        }
     }
 }
 

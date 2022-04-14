@@ -9,6 +9,7 @@ pub struct Program {
 pub enum Statement {
     Let(Identifier, Expression),
     While(Expression, Vec<Statement>),
+    If(Expression, Vec<Statement>),
     Expression(Expression),
 }
 
