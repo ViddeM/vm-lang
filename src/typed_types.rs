@@ -10,6 +10,7 @@ pub enum TypedStatement {
     Let(Identifier, TypedExpression),
     Expression(TypedExpression),
     If(TypedExpression, Vec<TypedStatement>),
+    IfElse(TypedExpression, Vec<TypedStatement>, Vec<TypedStatement>),
     While(TypedExpression, Vec<TypedStatement>),
 }
 

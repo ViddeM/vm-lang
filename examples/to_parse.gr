@@ -8,5 +8,11 @@ fn main() {
         if (a == 2) {
             print_number(42);
         }
+
+        if (a > 3) {
+            print_number(101);
+        } else {
+            print_number(100);
+        }
     }
 }

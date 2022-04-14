@@ -10,6 +10,7 @@ match {
     r"true" => TRUE,
     r"while" => WHILE,
     r"if" => IF,
+    r"else" => ELSE,
     "(",
     ")",
     "{",
@@ -46,6 +47,7 @@ Stmt: Statement = {
     LET <id: Ident> "=" <expr: Expr> ";" => Statement::Let(id, expr),
     WHILE <expr: Expr> "{" <stmts: Stmt*> "}" => Statement::While(expr, stmts),
     IF "(" <expr: Expr> ")" "{" <stmts: Stmt*> "}" => Statement::If(expr, stmts),
+    IF "(" <expr: Expr> ")" "{" <stmts: Stmt*> "}" ELSE "{" <else_stmts: Stmt*> "}" => Statement::IfElse(expr, stmts, else_stmts),
     <expr: Expr> ";" => Statement::Expression(expr),
 }
 

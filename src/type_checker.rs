@@ -1,5 +1,5 @@
 use crate::core_types::{ComparisonOperator, Expression, Identifier, Program, Statement, Type};
-use crate::type_checker::TypeCheckError::NoSuchFunc;
+use crate::type_checker::TypeCheckError::{NoSuchFunc, VarExists};
 use crate::typed_types::{TypedExpression, TypedProgram, TypedStatement};
 use std::collections::HashMap;
 
@@ -51,6 +51,9 @@ impl TypeCheckEnv {
 
     fn insert_var(&mut self, id: Identifier, t: Type) -> TypeCheckResult<()> {
         let mut scope = self.vars.pop().ok_or(TypeCheckError::NoScope)?;
+        if scope.contains_key(&id) {
+            return Err(VarExists(id.clone()));
+        }
         scope.insert(id, t);
         self.vars.push(scope);
         Ok(())
@@ -67,8 +70,8 @@ impl TypeCheckEnv {
 
 #[derive(Debug, thiserror::Error)]
 pub enum TypeCheckError {
-    #[error("The variable already exists within the current scope")]
-    VarExists,
+    #[error("The variable `{0}` already exists within the current scope")]
+    VarExists(Identifier),
     #[error("No scope exists")]
     NoScope,
     #[error("Types does not match, expected `{0}`, got `{1}`")]
@@ -107,7 +110,7 @@ fn type_check_stmt(stmt: Statement, env: &mut TypeCheckEnv) -> TypeCheckResult<T
     match stmt {
         Statement::Let(id, expr) => {
             if let Some(_) = env.lookup_var_current_scope(&id) {
-                return Err(TypeCheckError::VarExists);
+                return Err(TypeCheckError::VarExists(id.clone()));
             }
             let expr_typed = type_check_expr(&expr, env)?;
             env.insert_var(id.clone(), expr_typed.get_type())?;
@@ -144,6 +147,33 @@ fn type_check_stmt(stmt: Statement, env: &mut TypeCheckEnv) -> TypeCheckResult<T
                 .collect::<TypeCheckResult<Vec<TypedStatement>>>()?;
             env.pop_scope();
             return Ok(TypedStatement::If(expr_typed, typed_stmts));
+        }
+        Statement::IfElse(expr, stmts, else_stmts) => {
+            env.new_scope();
+            let expr_typed = type_check_expr(&expr, env)?;
+            let t = expr_typed.get_type();
+            if t != Type::Boolean {
+                return Err(TypeCheckError::TypeMismatch(Type::Boolean, t));
+            }
+            let scope = env.vars.pop().ok_or(TypeCheckError::NoScope)?;
+            env.vars.push(scope.clone());
+
+            let typed_stmts = stmts
+                .into_iter()
+                .map(|stmt| type_check_stmt(stmt, env))
+                .collect::<TypeCheckResult<Vec<TypedStatement>>>()?;
+            env.pop_scope();
+            env.vars.push(scope);
+            let typed_else_stmts = else_stmts
+                .into_iter()
+                .map(|stmt| type_check_stmt(stmt, env))
+                .collect::<TypeCheckResult<Vec<TypedStatement>>>()?;
+            env.pop_scope();
+            return Ok(TypedStatement::IfElse(
+                expr_typed,
+                typed_stmts,
+                typed_else_stmts,
+            ));
         }
     }
 }
