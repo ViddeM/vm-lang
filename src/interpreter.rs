@@ -1,7 +1,6 @@
-use crate::core_types::{Identifier, Type};
+use crate::core_types::{ComparisonOperator, Identifier, Type};
 use crate::typed_types::{TypedExpression, TypedProgram, TypedStatement};
 use std::collections::HashMap;
-use std::convert::identity;
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone)]
@@ -48,6 +47,24 @@ impl InterpretEnv {
         Ok(())
     }
 
+    fn update_var(&mut self, id: Identifier, val: Value) -> InterpretResult<()> {
+        let mut scopes = vec![];
+        loop {
+            let mut scope = self
+                .vars
+                .pop()
+                .ok_or(InterpretError::NoSuchVar(id.clone()))?;
+            if scope.contains_key(&id) {
+                scope.insert(id.clone(), val);
+                self.vars.push(scope);
+                break;
+            }
+            scopes.push(scope);
+        }
+        scopes.into_iter().for_each(|s| self.vars.push(s));
+        Ok(())
+    }
+
     fn lookup_var(&self, id: &Identifier) -> Option<Value> {
         for scope in self.vars.iter() {
             if let Some(val) = scope.get(id) {
@@ -55,6 +72,14 @@ impl InterpretEnv {
             }
         }
         None
+    }
+
+    fn new_scope(&mut self) {
+        self.vars.push(HashMap::new());
+    }
+
+    fn pop_scope(&mut self) {
+        self.vars.pop();
     }
 }
 
@@ -72,6 +97,8 @@ pub enum InterpretError {
     InvalidFunctionArgCount(usize, usize),
     #[error("Variable `{0}` could not be found")]
     NoSuchVar(Identifier),
+    #[error("Cannot compare value `{0}` with value `{1}`")]
+    CompareValueMismatch(Value, Value),
 }
 
 pub type InterpretResult<T> = Result<T, InterpretError>;
@@ -79,18 +106,38 @@ pub type InterpretResult<T> = Result<T, InterpretError>;
 pub fn interpret(prog: TypedProgram) -> InterpretResult<()> {
     let mut env = InterpretEnv::new();
     for s in prog.typed_stmts.into_iter() {
-        match s {
-            TypedStatement::Let(id, expr, _) => {
-                let val = eval_expression(&expr, &mut env)?;
-                env.insert_var(id, val)?;
-            }
-            TypedStatement::Expression(expr, _) => {
-                eval_expression(&expr, &mut env)?;
-            }
-        }
+        eval_statement(&s, &mut env)?;
     }
 
     Ok(())
+}
+
+fn eval_statement(stmt: &TypedStatement, env: &mut InterpretEnv) -> InterpretResult<()> {
+    Ok(match stmt {
+        TypedStatement::Let(id, expr) => {
+            let val = eval_expression(&expr, env)?;
+            env.insert_var(id.clone(), val)?;
+        }
+        TypedStatement::Expression(expr) => {
+            eval_expression(&expr, env)?;
+        }
+        TypedStatement::While(expr, stmts) => loop {
+            env.new_scope();
+            match eval_expression(&expr, env)? {
+                Value::Boolean(true) => {
+                    for s in stmts.iter() {
+                        eval_statement(s, env)?;
+                    }
+                    env.pop_scope();
+                }
+                Value::Boolean(false) => {
+                    env.pop_scope();
+                    break;
+                }
+                v => return Err(InterpretError::ValTypeError(Type::Boolean, v)),
+            };
+        },
+    })
 }
 
 fn eval_expression(expr: &TypedExpression, env: &mut InterpretEnv) -> InterpretResult<Value> {
@@ -105,6 +152,12 @@ fn eval_expression(expr: &TypedExpression, env: &mut InterpretEnv) -> InterpretR
         TypedExpression::Variable(name, _) => env
             .lookup_var(name)
             .ok_or(InterpretError::NoSuchVar(name.clone()))?,
+        TypedExpression::Comparison(a, b, op, _) => eval_comparison(a, b, op, env)?,
+        TypedExpression::Assignment(name, expr, _) => {
+            let val = eval_expression(expr, env)?;
+            env.update_var(name.clone(), val.clone())?;
+            val
+        }
     })
 }
 
@@ -127,6 +180,43 @@ fn eval_arith(
     };
 
     Ok(Value::Integer(op(num_a, num_b)))
+}
+
+fn eval_comparison(
+    a: &TypedExpression,
+    b: &TypedExpression,
+    op: &ComparisonOperator,
+    env: &mut InterpretEnv,
+) -> InterpretResult<Value> {
+    let val_a = eval_expression(a, env)?;
+    let val_b = eval_expression(b, env)?;
+
+    let cmp_ok = match (&val_a, &val_b) {
+        (Value::Integer(a), Value::Integer(b)) => compare(a, b, op),
+        (Value::Boolean(a), Value::Boolean(b)) => compare(a, b, op),
+        _ => {
+            return Err(InterpretError::CompareValueMismatch(
+                val_a.clone(),
+                val_b.clone(),
+            ))
+        }
+    };
+
+    Ok(Value::Boolean(cmp_ok))
+}
+
+fn compare<T>(a: &T, b: &T, op: &ComparisonOperator) -> bool
+where
+    T: PartialEq<T> + PartialOrd<T>,
+{
+    match op {
+        ComparisonOperator::Equals => a == b,
+        ComparisonOperator::NotEquals => a != b,
+        ComparisonOperator::LessOrEqual => a <= b,
+        ComparisonOperator::GreaterOrEqual => a >= b,
+        ComparisonOperator::LessThan => a < b,
+        ComparisonOperator::GreaterThan => a > b,
+    }
 }
 
 fn call_function(

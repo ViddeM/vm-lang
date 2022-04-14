@@ -8,6 +8,7 @@ pub struct Program {
 #[derive(Debug, Clone)]
 pub enum Statement {
     Let(Identifier, Expression),
+    While(Expression, Vec<Statement>),
     Expression(Expression),
 }
 
@@ -21,6 +22,8 @@ pub enum Expression {
     Times(Box<Expression>, Box<Expression>),
     Divide(Box<Expression>, Box<Expression>),
     FunctionCall(Identifier, Vec<Expression>),
+    Comparison(Box<Expression>, Box<Expression>, ComparisonOperator),
+    Assignment(Identifier, Box<Expression>),
 }
 
 pub type Identifier = String;
@@ -44,4 +47,14 @@ impl Display for Type {
             }
         )
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum ComparisonOperator {
+    Equals,
+    NotEquals,
+    LessOrEqual,
+    GreaterOrEqual,
+    LessThan,
+    GreaterThan,
 }

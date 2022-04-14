@@ -1,4 +1,4 @@
-use crate::core_types::{Expression, Identifier, Program, Statement, Type};
+use crate::core_types::{ComparisonOperator, Expression, Identifier, Program, Statement, Type};
 use crate::type_checker::TypeCheckError::NoSuchFunc;
 use crate::typed_types::{TypedExpression, TypedProgram, TypedStatement};
 use std::collections::HashMap;
@@ -55,6 +55,14 @@ impl TypeCheckEnv {
         self.vars.push(scope);
         Ok(())
     }
+
+    fn new_scope(&mut self) {
+        self.vars.push(HashMap::new());
+    }
+
+    fn pop_scope(&mut self) {
+        self.vars.pop();
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -68,13 +76,17 @@ pub enum TypeCheckError {
     #[error("No such function exists `{0}`")]
     NoSuchFunc(Identifier),
     #[error("Call to func `{0}` has an invalid amount of arguments `{1}`, expected `{2}` args")]
-    ArgLenMissmatch(Identifier, usize, usize),
+    ArgLenMismatch(Identifier, usize, usize),
     #[error("Invalid argument type in call to function `{0}`, got type `{1}`, expected `{2}`")]
-    ArgTypeMissmatch(Identifier, Type, Type),
+    ArgTypeMismatch(Identifier, Type, Type),
     #[error("No variable exists with name `{0}`")]
     NoSuchVar(Identifier),
     #[error("Arithmetic operation with non-number type `{0}`")]
     ArithInvalidType(Type),
+    #[error("Cannot compare type `{0}` with type `{1}`")]
+    CmpTypeMismatch(Type, Type),
+    #[error("Cannot assign type `{0}` to variable `{1}` of type `{2}`")]
+    AssignmentMismatch(Type, Identifier, Type),
 }
 
 pub type TypeCheckResult<T> = Result<T, TypeCheckError>;
@@ -98,14 +110,26 @@ fn type_check_stmt(stmt: Statement, env: &mut TypeCheckEnv) -> TypeCheckResult<T
                 return Err(TypeCheckError::VarExists);
             }
             let expr_typed = type_check_expr(&expr, env)?;
-            let t = expr_typed.get_type();
-            env.insert_var(id.clone(), t.clone())?;
-            Ok(TypedStatement::Let(id, expr_typed, t))
+            env.insert_var(id.clone(), expr_typed.get_type())?;
+            Ok(TypedStatement::Let(id, expr_typed))
         }
         Statement::Expression(expr) => {
             let expr_typed = type_check_expr(&expr, env)?;
+            Ok(TypedStatement::Expression(expr_typed))
+        }
+        Statement::While(expr, stmts) => {
+            env.new_scope();
+            let expr_typed = type_check_expr(&expr, env)?;
             let t = expr_typed.get_type();
-            Ok(TypedStatement::Expression(expr_typed, t))
+            if t != Type::Boolean {
+                return Err(TypeCheckError::TypeMismatch(Type::Boolean, t));
+            }
+            let typed_stmts = stmts
+                .into_iter()
+                .map(|stmt| type_check_stmt(stmt, env))
+                .collect::<TypeCheckResult<Vec<TypedStatement>>>()?;
+            env.pop_scope();
+            return Ok(TypedStatement::While(expr_typed, typed_stmts));
         }
     }
 }
@@ -144,6 +168,25 @@ fn type_check_expr(expr: &Expression, env: &mut TypeCheckEnv) -> TypeCheckResult
             Some(t) => TypedExpression::Variable(name.clone(), t),
             None => return Err(TypeCheckError::NoSuchVar(name.clone())),
         },
+        Expression::Comparison(a, b, op) => {
+            let (a, b, t) = type_check_comparison(a, b, env)?;
+            TypedExpression::Comparison(a, b, op.clone(), Type::Boolean)
+        }
+        Expression::Assignment(name, expr) => match env.lookup_var(name) {
+            None => return Err(TypeCheckError::NoSuchVar(name.clone())),
+            Some(t) => {
+                let typed_expr = type_check_expr(expr, env)?;
+                if typed_expr.get_type() != t {
+                    return Err(TypeCheckError::AssignmentMismatch(
+                        typed_expr.get_type(),
+                        name.clone(),
+                        t,
+                    ));
+                }
+
+                TypedExpression::Assignment(name.clone(), Box::new(typed_expr), t)
+            }
+        },
     })
 }
 
@@ -154,7 +197,7 @@ fn type_check_func_args(
     env: &mut TypeCheckEnv,
 ) -> TypeCheckResult<Vec<TypedExpression>> {
     if expected.len() != args.len() {
-        return Err(TypeCheckError::ArgLenMissmatch(
+        return Err(TypeCheckError::ArgLenMismatch(
             name.clone(),
             args.len(),
             expected.len(),
@@ -167,7 +210,7 @@ fn type_check_func_args(
             let typed = type_check_expr(arg, env)?;
             let expected_type = match expected.get(i) {
                 None => {
-                    return Err(TypeCheckError::ArgLenMissmatch(
+                    return Err(TypeCheckError::ArgLenMismatch(
                         name.clone(),
                         args.len(),
                         expected.len(),
@@ -177,7 +220,7 @@ fn type_check_func_args(
             };
 
             if typed.get_type() != expected_type {
-                return Err(TypeCheckError::ArgTypeMissmatch(
+                return Err(TypeCheckError::ArgTypeMismatch(
                     name.clone(),
                     typed.get_type(),
                     expected_type,
@@ -206,6 +249,24 @@ fn type_check_arith(
 
     if type_a != Type::Integer {
         return Err(TypeCheckError::ArithInvalidType(type_a));
+    }
+
+    Ok((Box::new(typed_a), Box::new(typed_b), type_a))
+}
+
+fn type_check_comparison(
+    a: &Expression,
+    b: &Expression,
+    env: &mut TypeCheckEnv,
+) -> TypeCheckResult<(Box<TypedExpression>, Box<TypedExpression>, Type)> {
+    let typed_a = type_check_expr(&a, env)?;
+    let typed_b = type_check_expr(&b, env)?;
+
+    let type_a = typed_a.get_type();
+    let type_b = typed_b.get_type();
+
+    if type_a != type_b {
+        return Err(TypeCheckError::CmpTypeMismatch(type_a, type_b));
     }
 
     Ok((Box::new(typed_a), Box::new(typed_b), type_a))

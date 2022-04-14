@@ -1,4 +1,4 @@
-use crate::core_types::{Identifier, Type};
+use crate::core_types::{ComparisonOperator, Identifier, Type};
 
 #[derive(Debug, Clone)]
 pub struct TypedProgram {
@@ -7,8 +7,9 @@ pub struct TypedProgram {
 
 #[derive(Debug, Clone)]
 pub enum TypedStatement {
-    Let(Identifier, TypedExpression, Type),
-    Expression(TypedExpression, Type),
+    Let(Identifier, TypedExpression),
+    Expression(TypedExpression),
+    While(TypedExpression, Vec<TypedStatement>),
 }
 
 #[derive(Debug, Clone)]
@@ -21,6 +22,13 @@ pub enum TypedExpression {
     Divide(Box<TypedExpression>, Box<TypedExpression>, Type),
     FunctionCall(Identifier, Vec<TypedExpression>, Type),
     Variable(Identifier, Type),
+    Comparison(
+        Box<TypedExpression>,
+        Box<TypedExpression>,
+        ComparisonOperator,
+        Type,
+    ),
+    Assignment(Identifier, Box<TypedExpression>, Type),
 }
 
 impl TypedExpression {
@@ -34,6 +42,8 @@ impl TypedExpression {
             TypedExpression::Divide(_, _, t) => t.clone(),
             TypedExpression::FunctionCall(_, _, t) => t.clone(),
             TypedExpression::Variable(_, t) => t.clone(),
+            TypedExpression::Comparison(_, _, _, t) => t.clone(),
+            TypedExpression::Assignment(_, _, t) => t.clone(),
         }
     }
 }

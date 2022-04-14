@@ -1,4 +1,4 @@
-use crate::core_types::{Program, Statement, Identifier, Expression};
+use crate::core_types::{Program, Statement, Identifier, Expression, ComparisonOperator};
 
 grammar;
 
@@ -8,10 +8,17 @@ match {
     "let" => LET,
     r"false" => FALSE,
     r"true" => TRUE,
+    r"while" => WHILE,
     "(",
     ")",
     "{",
     "}",
+    "==",
+    "!=",
+    "<=",
+    ">=",
+    "<",
+    ">",
     "=",
     "+",
     "-",
@@ -36,23 +43,38 @@ pub Prgr: Program = {
 
 Stmt: Statement = {
     LET <id: Ident> "=" <expr: Expr> ";" => Statement::Let(id, expr),
+    WHILE <expr: Expr> "{" <stmts: Stmt*> "}" => Statement::While(expr, stmts),
     <expr: Expr> ";" => Statement::Expression(expr),
 }
 
 Expr: Expression = {
-    <expa: Expr> "+" <expb: Factor> => Expression::Plus(Box::new(expa), Box::new(expb)),
-    <expa: Expr> "-" <expb: Factor> => Expression::Minus(Box::new(expa), Box::new(expb)),
+    Assignment,
+}
+
+Assignment: Expression = {
+    <var: Ident> "=" <expr: Assignment> => Expression::Assignment(var, Box::new(expr)),
+    Comparison,
+}
+
+Comparison: Expression = {
+    <a: Term> <op: CmpOp> <b: Term> => Expression::Comparison(Box::new(a), Box::new(b), op),
+    Term,
+}
+
+Term: Expression = {
+    <expa: Term> "+" <expb: Factor> => Expression::Plus(Box::new(expa), Box::new(expb)),
+    <expa: Term> "-" <expb: Factor> => Expression::Minus(Box::new(expa), Box::new(expb)),
     Factor,
 }
 
 Factor: Expression = {
-    <expa: Factor> "*" <expb: Literal> => Expression::Times(Box::new(expa), Box::new(expb)),
-    <expa: Factor> "/" <expb: Literal> => Expression::Divide(Box::new(expa), Box::new(expb)),
+    <expa: Factor> "*" <expb: FunctionCall> => Expression::Times(Box::new(expa), Box::new(expb)),
+    <expa: Factor> "/" <expb: FunctionCall> => Expression::Divide(Box::new(expa), Box::new(expb)),
     FunctionCall,
 }
 
 FunctionCall: Expression = {
-    <name: ID> "(" <args: Comma<Expr>> ")" => Expression::FunctionCall(String::from(name), args),
+    <name: Ident> "(" <args: Comma<Expr>> ")" => Expression::FunctionCall(String::from(name), args),
     Literal,
 }
 
@@ -72,3 +94,12 @@ Ident: Identifier = {
 Comma<E>: Vec<E> =
     <v0:(<E> ",")*> <e1:E?> =>
         v0.into_iter().chain(e1).collect();
+
+CmpOp: ComparisonOperator = {
+    "==" => ComparisonOperator::Equals,
+    "!=" => ComparisonOperator::NotEquals,
+    "<=" => ComparisonOperator::LessOrEqual,
+    ">=" => ComparisonOperator::GreaterOrEqual,
+    "<" => ComparisonOperator::LessThan,
+    ">" => ComparisonOperator::GreaterThan,
+}
