@@ -1,8 +1,30 @@
-use crate::core_types::{ComparisonOperator, Identifier, Type};
+use crate::core_types::{Argument, ComparisonOperator, Identifier, Type};
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone)]
 pub struct TypedProgram {
-    pub typed_stmts: Vec<TypedStatement>,
+    pub main_function: TypedFunction,
+    pub functions: Vec<TypedFunction>,
+}
+
+impl Display for TypedProgram {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Program")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TypedFunction {
+    pub name: Identifier,
+    pub arguments: Vec<Argument>,
+    pub statements: Vec<TypedStatement>,
+    pub return_type: Type,
+}
+
+impl Display for TypedFunction {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Function {} : {}", self.name, self.return_type)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -11,7 +33,31 @@ pub enum TypedStatement {
     Expression(TypedExpression),
     If(TypedExpression, Vec<TypedStatement>),
     IfElse(TypedExpression, Vec<TypedStatement>, Vec<TypedStatement>),
+    Return(Option<TypedExpression>),
     While(TypedExpression, Vec<TypedStatement>),
+}
+
+impl Display for TypedStatement {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Statement: {}",
+            match self {
+                TypedStatement::Let(a, b) => format!("let {} = {}", a, b),
+                TypedStatement::Expression(e) => format!("expression {}", e),
+                TypedStatement::If(a, _) => format!("if {}", a),
+                TypedStatement::IfElse(a, _, _) => format!("if {} else", a),
+                TypedStatement::Return(a) => format!(
+                    "return {}",
+                    match a {
+                        Some(a) => a.to_string(),
+                        None => String::from("void"),
+                    }
+                ),
+                TypedStatement::While(a, _) => format!("while {}", a),
+            }
+        )
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -31,6 +77,34 @@ pub enum TypedExpression {
         Type,
     ),
     Assignment(Identifier, Box<TypedExpression>, Type),
+}
+
+impl Display for TypedExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Expression: {}",
+            match self {
+                TypedExpression::IntegerLiteral(i) => i.to_string(),
+                TypedExpression::BooleanLiteral(b) => b.to_string(),
+                TypedExpression::Plus(a, b, _) => format!("{} + {}", a, b),
+                TypedExpression::Minus(a, b, _) => format!("{} - {}", a, b),
+                TypedExpression::Times(a, b, _) => format!("{} * {}", a, b),
+                TypedExpression::Divide(a, b, _) => format!("{} / {}", a, b),
+                TypedExpression::FunctionCall(name, args, _) => format!(
+                    "{} ({})",
+                    name,
+                    args.iter().fold(String::new(), |mut acc, i| {
+                        acc.push_str(&format!("{}, ", i.to_string()));
+                        acc
+                    })
+                ),
+                TypedExpression::Variable(a, _) => format!("var {}", a),
+                TypedExpression::Comparison(a, b, comp, _) => format!("{} {} {}", a, comp, b),
+                TypedExpression::Assignment(a, b, _) => format!("{} = {}", a, b),
+            }
+        )
+    }
 }
 
 impl TypedExpression {

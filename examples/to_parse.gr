@@ -1,18 +1,29 @@
-fn main() {
-    let a = 1;
-
-    while (a <= 5) {
-        print_number(a);
+fn subtract_stuff(a: int, b: int, c: bool): int {
+    while a < b {
         a = a + 1;
-
-        if (a == 2) {
-            print_number(42);
-        }
-
-        if (a > 3) {
-            print_number(101);
-        } else {
-            print_number(100);
-        }
+        print_number(a);
+        print_number(b);
     }
+
+    if b - a < 0 {
+        return -69;
+    } else {
+        return 69;
+    }
+
+    return -1;
+}
+
+fn main() {
+    let a = 0;
+    let b = 2;
+    print_number(add_stuff(a, b));
+    print_number(b);
+
+    // print_number(subtract_stuff(a, b, false));
+    // print_number(subtract_stuff(a, b, true));
+}
+
+fn add_stuff(c: int, d: int): int {
+    return c + d + 1;
 }

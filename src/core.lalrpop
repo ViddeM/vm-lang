@@ -1,16 +1,18 @@
-use crate::core_types::{Program, Statement, Identifier, Expression, ComparisonOperator};
+use crate::core_types::{Program, Statement, Identifier, Expression, ComparisonOperator, Type, Argument, Function};
 
 grammar;
 
 match {
     "fn" => FN,
-    "main" => MAIN,
     "let" => LET,
     r"false" => FALSE,
     r"true" => TRUE,
     r"while" => WHILE,
     r"if" => IF,
     r"else" => ELSE,
+    r"int" => INT,
+    r"bool" => BOOL,
+    r"return" => RETURN,
     "(",
     ")",
     "{",
@@ -28,6 +30,8 @@ match {
     "/",
     ",",
     ";",
+    ":",
+    "",
     r"[-]?\d+" => INTEGER,
     r"\s*" => { }, // The default whitespace skipping is disabled an `ignore pattern` is specified
     r"//[^\n\r]*[\n\r]*" => { }, // Skip `// comments`
@@ -36,18 +40,35 @@ match {
 }
 
 pub Prgr: Program = {
-    FN MAIN "(" ")" "{"
-        <stmts: Stmt*>
-    "}" => Program {
-        statements: stmts
+    <funcs: Func*> => Program { functions: funcs },
+}
+
+Func: Function = {
+    FN <id: Ident> "(" <args: Comma<Arg>> ")" ":" <ret: Type> "{" <stmts: Stmt*> "}" => Function {
+        name: id,
+        arguments: args,
+        statements: stmts,
+        return_type: ret,
     },
+    FN <id: Ident> "(" <args: Comma<Arg>> ")" "{" <stmts: Stmt*> "}" => Function {
+        name: id,
+        arguments: args,
+        statements: stmts,
+        return_type: Type::Void,
+    }
+}
+
+Arg: Argument = {
+    <id: Ident> ":" <tp: Type> => Argument { name: id, t: tp },
 }
 
 Stmt: Statement = {
     LET <id: Ident> "=" <expr: Expr> ";" => Statement::Let(id, expr),
     WHILE <expr: Expr> "{" <stmts: Stmt*> "}" => Statement::While(expr, stmts),
-    IF "(" <expr: Expr> ")" "{" <stmts: Stmt*> "}" => Statement::If(expr, stmts),
-    IF "(" <expr: Expr> ")" "{" <stmts: Stmt*> "}" ELSE "{" <else_stmts: Stmt*> "}" => Statement::IfElse(expr, stmts, else_stmts),
+    IF <expr: Expr> "{" <stmts: Stmt*> "}" => Statement::If(expr, stmts),
+    IF <expr: Expr> "{" <stmts: Stmt*> "}" ELSE "{" <else_stmts: Stmt*> "}" => Statement::IfElse(expr, stmts, else_stmts),
+    RETURN <expr: Expr> ";" => Statement::Return(Some(expr)),
+    RETURN ";" => Statement::Return(None),
     <expr: Expr> ";" => Statement::Expression(expr),
 }
 
@@ -106,4 +127,9 @@ CmpOp: ComparisonOperator = {
     ">=" => ComparisonOperator::GreaterOrEqual,
     "<" => ComparisonOperator::LessThan,
     ">" => ComparisonOperator::GreaterThan,
+}
+
+Type: Type = {
+    INT => Type::Integer,
+    BOOL => Type::Boolean,
 }

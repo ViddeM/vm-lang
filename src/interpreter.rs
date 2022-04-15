@@ -1,5 +1,5 @@
-use crate::core_types::{ComparisonOperator, Identifier, Type};
-use crate::typed_types::{TypedExpression, TypedProgram, TypedStatement};
+use crate::core_types::{Argument, ComparisonOperator, Identifier, Type};
+use crate::typed_types::{TypedExpression, TypedFunction, TypedProgram, TypedStatement};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
@@ -27,13 +27,25 @@ impl Display for Value {
 #[derive(Debug)]
 pub struct InterpretEnv {
     vars: Vec<HashMap<Identifier, Value>>,
-    functions: HashMap<Identifier, Vec<TypedStatement>>,
+    functions: HashMap<Identifier, TypedFunction>,
 }
 
 impl InterpretEnv {
     fn new() -> Self {
         let mut default_functions = HashMap::new();
-        default_functions.insert(Identifier::from("print_number"), vec![]);
+        let print_number = Identifier::from("print_number");
+        default_functions.insert(
+            print_number.clone(),
+            TypedFunction {
+                name: print_number.clone(),
+                arguments: vec![Argument {
+                    name: Identifier::from("number"),
+                    t: Type::Integer,
+                }],
+                statements: vec![],
+                return_type: Type::Void,
+            },
+        );
         Self {
             vars: vec![HashMap::new()],
             functions: default_functions,
@@ -105,66 +117,99 @@ pub type InterpretResult<T> = Result<T, InterpretError>;
 
 pub fn interpret(prog: TypedProgram) -> InterpretResult<()> {
     let mut env = InterpretEnv::new();
-    for s in prog.typed_stmts.into_iter() {
-        eval_statement(&s, &mut env)?;
+
+    for f in prog.functions.into_iter() {
+        env.functions.insert(f.name.clone(), f);
+    }
+
+    for s in prog.main_function.statements.into_iter() {
+        if let Some(_) = eval_statement(&s, &mut env)? {
+            break;
+        }
     }
 
     Ok(())
 }
 
-fn eval_statement(stmt: &TypedStatement, env: &mut InterpretEnv) -> InterpretResult<()> {
+fn eval_statement(stmt: &TypedStatement, env: &mut InterpretEnv) -> InterpretResult<Option<Value>> {
     Ok(match stmt {
         TypedStatement::Let(id, expr) => {
             let val = eval_expression(&expr, env)?;
             env.insert_var(id.clone(), val)?;
+            None
         }
         TypedStatement::Expression(expr) => {
             eval_expression(&expr, env)?;
+            None
         }
-        TypedStatement::While(expr, stmts) => loop {
-            env.new_scope();
-            match eval_expression(&expr, env)? {
-                Value::Boolean(true) => {
-                    for s in stmts.iter() {
-                        eval_statement(s, env)?;
+        TypedStatement::While(expr, stmts) => {
+            loop {
+                env.new_scope();
+                match eval_expression(&expr, env)? {
+                    Value::Boolean(true) => {
+                        for s in stmts.iter() {
+                            if let Some(val) = eval_statement(s, env)? {
+                                env.pop_scope();
+                                return Ok(Some(val));
+                            }
+                        }
                     }
-                    env.pop_scope();
-                }
-                Value::Boolean(false) => {
-                    env.pop_scope();
-                    break;
-                }
-                v => return Err(InterpretError::ValTypeError(Type::Boolean, v)),
-            };
-        },
+                    Value::Boolean(false) => {
+                        env.pop_scope();
+                        break;
+                    }
+                    v => return Err(InterpretError::ValTypeError(Type::Boolean, v)),
+                };
+                env.pop_scope();
+            }
+            None
+        }
         TypedStatement::If(expr, stmts) => {
             env.new_scope();
             match eval_expression(&expr, env)? {
                 Value::Boolean(true) => {
                     for s in stmts.iter() {
-                        eval_statement(s, env)?;
+                        if let Some(val) = eval_statement(s, env)? {
+                            env.pop_scope();
+                            return Ok(Some(val));
+                        }
                     }
                 }
                 Value::Boolean(false) => {}
                 v => return Err(InterpretError::ValTypeError(Type::Boolean, v)),
             }
             env.pop_scope();
+            None
         }
         TypedStatement::IfElse(expr, stmts, else_stmts) => {
             env.new_scope();
             match eval_expression(&expr, env)? {
                 Value::Boolean(true) => {
                     for s in stmts.iter() {
-                        eval_statement(s, env)?;
+                        if let Some(val) = eval_statement(s, env)? {
+                            env.pop_scope();
+                            return Ok(Some(val));
+                        }
                     }
                 }
                 Value::Boolean(false) => {
                     for s in else_stmts.iter() {
-                        eval_statement(s, env)?;
+                        if let Some(val) = eval_statement(s, env)? {
+                            env.pop_scope();
+                            return Ok(Some(val));
+                        }
                     }
                 }
                 v => return Err(InterpretError::ValTypeError(Type::Boolean, v)),
             }
+            None
+        }
+        TypedStatement::Return(expr_opt) => {
+            let val = match expr_opt {
+                None => Value::Void,
+                Some(v) => eval_expression(v, env)?,
+            };
+            Some(val)
         }
     })
 }
@@ -253,34 +298,48 @@ fn call_function(
     args: &Vec<TypedExpression>,
     env: &mut InterpretEnv,
 ) -> InterpretResult<Value> {
-    let arg_vals = args
-        .iter()
-        .map(|a| eval_expression(a, env))
-        .collect::<InterpretResult<Vec<Value>>>()?;
+    env.new_scope();
 
-    let statements = match name.as_str() {
+    let func = env
+        .functions
+        .get(name)
+        .ok_or(InterpretError::NoSuchFunction(name.clone()))?
+        .clone();
+
+    for (i, arg) in func.arguments.iter().enumerate() {
+        let a = args.get(i).ok_or(InterpretError::InvalidFunctionArgCount(
+            func.arguments.len(),
+            args.len(),
+        ))?;
+        let val = eval_expression(a, env)?;
+        env.insert_var(arg.name.clone(), val)?;
+    }
+
+    match name.as_str() {
         "print_number" => {
-            let arg = args
-                .first()
-                .ok_or(InterpretError::InvalidFunctionArgCount(1, 0))?;
-
-            if arg_vals.len() > 1 {
-                return Err(InterpretError::InvalidFunctionArgCount(1, arg_vals.len()));
-            }
-
-            return match eval_expression(arg, env)? {
+            let number = Identifier::from("number");
+            let arg_val = env
+                .lookup_var(&number)
+                .ok_or(InterpretError::NoSuchVar(number))?;
+            match arg_val {
                 Value::Integer(a) => {
                     println!("Print number {}", a);
-                    Ok(Value::Void)
                 }
-                val => Err(InterpretError::ValTypeError(Type::Integer, val)),
-            };
+                val => return Err(InterpretError::ValTypeError(Type::Integer, val)),
+            }
+            env.pop_scope();
+            Ok(Value::Void)
         }
-        _ => env
-            .functions
-            .get(name)
-            .ok_or(InterpretError::NoSuchFunction(name.clone()))?,
-    };
+        _ => {
+            for stmt in func.statements.iter() {
+                if let Some(val) = eval_statement(stmt, env)? {
+                    env.pop_scope();
+                    return Ok(val);
+                }
+            }
 
-    todo!("Self-implemented functions are not yet supported")
+            env.pop_scope();
+            Ok(Value::Void)
+        }
+    }
 }

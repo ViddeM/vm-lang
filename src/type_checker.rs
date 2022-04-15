@@ -1,7 +1,47 @@
-use crate::core_types::{ComparisonOperator, Expression, Identifier, Program, Statement, Type};
+use crate::core_types::{Expression, Function, Identifier, Program, Statement, Type};
 use crate::type_checker::TypeCheckError::{NoSuchFunc, VarExists};
-use crate::typed_types::{TypedExpression, TypedProgram, TypedStatement};
+use crate::typed_types::{TypedExpression, TypedFunction, TypedProgram, TypedStatement};
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
+
+#[derive(Debug)]
+pub struct StackTrace {
+    stack: Vec<String>,
+}
+
+impl StackTrace {
+    fn new() -> Self {
+        StackTrace { stack: vec![] }
+    }
+
+    fn push(&mut self, st: String) {
+        self.stack.push(st);
+    }
+
+    fn pop(&mut self) {
+        self.stack.pop();
+    }
+
+    fn print(&self) {
+        println!("Stack:");
+        for s in self.stack.iter() {
+            println!("{}", s);
+        }
+    }
+}
+
+impl Display for StackTrace {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Stack: \n{}",
+            self.stack.iter().fold(String::new(), |mut s, e| {
+                s.push_str(&format!("{}\n", e));
+                s
+            })
+        )
+    }
+}
 
 #[derive(Debug)]
 pub struct TypeCheckEnv {
@@ -10,6 +50,8 @@ pub struct TypeCheckEnv {
     vars: Vec<HashMap<Identifier, Type>>,
 
     functions: HashMap<Identifier, (Vec<Type>, Type)>,
+
+    stack_trace: StackTrace,
 }
 
 impl TypeCheckEnv {
@@ -23,6 +65,7 @@ impl TypeCheckEnv {
         TypeCheckEnv {
             vars: vec![HashMap::new()],
             functions: default_functions,
+            stack_trace: StackTrace::new(),
         }
     }
 
@@ -90,46 +133,203 @@ pub enum TypeCheckError {
     CmpTypeMismatch(Type, Type),
     #[error("Cannot assign type `{0}` to variable `{1}` of type `{2}`")]
     AssignmentMismatch(Type, Identifier, Type),
+    #[error("A function with name `{0}` already exists")]
+    FuncExists(Identifier),
+    #[error("No main function is declared")]
+    NoMainFunction,
+    #[error("Invalid main function, main function must have 0 arguments and return type void")]
+    InvalidMainFunction,
+    #[error(
+        "Function `{0}` does not end with a return statement which all non-void functions must"
+    )]
+    MissingReturn(Identifier),
+    #[error("Cannot return type `{0}` from function `{1}` of type `{2}`")]
+    InvalidReturnType(Type, Identifier, Type),
 }
 
 pub type TypeCheckResult<T> = Result<T, TypeCheckError>;
 
+const MAIN_FUNC_NAME: &str = "main";
+
 pub fn type_check(prog: Program) -> TypeCheckResult<TypedProgram> {
     let mut env = TypeCheckEnv::new();
+    env.stack_trace.push(prog.to_string());
+
+    match type_check_program(prog, &mut env) {
+        Ok(p) => Ok(p),
+        Err(e) => {
+            println!("Error during typechecking");
+            env.stack_trace.print();
+            Err(e)
+        }
+    }
+}
+
+fn type_check_program(prog: Program, env: &mut TypeCheckEnv) -> TypeCheckResult<TypedProgram> {
+    for func in prog.functions.iter() {
+        type_check_function_header(&func, env)?;
+        env.stack_trace.pop();
+    }
+
+    let mut typed_functions = prog
+        .functions
+        .into_iter()
+        .map(|f| {
+            let f = type_check_function(f, env)?;
+            env.stack_trace.pop();
+            Ok(f)
+        })
+        .collect::<TypeCheckResult<Vec<TypedFunction>>>()?;
+
+    let mut main_index: Option<usize> = None;
+    for (index, func) in typed_functions.iter().enumerate() {
+        if &func.name == MAIN_FUNC_NAME {
+            main_index = Some(index);
+        }
+    }
+    let main_func = match main_index {
+        Some(index) => typed_functions.remove(index),
+        None => return Err(TypeCheckError::NoMainFunction),
+    };
+
+    if main_func.arguments.len() != 0 || main_func.return_type != Type::Void {
+        return Err(TypeCheckError::InvalidMainFunction);
+    }
 
     Ok(TypedProgram {
-        typed_stmts: prog
-            .statements
-            .into_iter()
-            .map(|s| type_check_stmt(s, &mut env))
-            .collect::<TypeCheckResult<Vec<TypedStatement>>>()?,
+        main_function: main_func,
+        functions: typed_functions,
+    })
+}
+
+fn type_check_function_header(func: &Function, env: &mut TypeCheckEnv) -> TypeCheckResult<()> {
+    env.stack_trace.push(func.to_string());
+    if env.functions.contains_key(&func.name) {
+        return Err(TypeCheckError::FuncExists(func.name.clone()));
+    }
+
+    let arg_types = func
+        .arguments
+        .iter()
+        .map(|a| a.t.clone())
+        .collect::<Vec<Type>>();
+    env.functions
+        .insert(func.name.clone(), (arg_types, func.return_type.clone()));
+
+    Ok(())
+}
+
+fn type_check_function(func: Function, env: &mut TypeCheckEnv) -> TypeCheckResult<TypedFunction> {
+    env.stack_trace.push(func.to_string());
+
+    env.new_scope();
+    for arg in func.arguments.iter() {
+        env.insert_var(arg.name.clone(), arg.t.clone())?;
+    }
+
+    let typed_statements = func
+        .statements
+        .into_iter()
+        .map(|s| {
+            let s = type_check_stmt(s, env)?;
+            env.stack_trace.pop();
+            Ok(s)
+        })
+        .collect::<TypeCheckResult<Vec<TypedStatement>>>()?;
+
+    let last_statement_index = typed_statements.len() - 1;
+    let typed_statements = typed_statements
+        .into_iter()
+        .enumerate()
+        .map(|(i, s)| {
+            match &s {
+                TypedStatement::Return(None) => {
+                    if func.return_type != Type::Void {
+                        return Err(TypeCheckError::InvalidReturnType(
+                            Type::Void,
+                            func.name.clone(),
+                            func.return_type.clone(),
+                        ));
+                    }
+                }
+                TypedStatement::Return(Some(e)) => {
+                    if e.get_type() != func.return_type {
+                        return Err(TypeCheckError::InvalidReturnType(
+                            e.get_type(),
+                            func.name.clone(),
+                            func.return_type.clone(),
+                        ));
+                    }
+                }
+                _ => {
+                    if i == last_statement_index && func.return_type != Type::Void {
+                        return Err(TypeCheckError::MissingReturn(func.name.clone()));
+                    }
+                }
+            }
+            Ok(s)
+        })
+        .collect::<TypeCheckResult<Vec<TypedStatement>>>()?;
+
+    if func.return_type != Type::Void {
+        match typed_statements.last() {
+            None => return Err(TypeCheckError::MissingReturn(func.name.clone())),
+            Some(val) => match val {
+                TypedStatement::Return(Some(v)) => {
+                    if v.get_type() != func.return_type {
+                        return Err(TypeCheckError::InvalidReturnType(
+                            v.get_type(),
+                            func.name.clone(),
+                            func.return_type.clone(),
+                        ));
+                    }
+                }
+                _ => return Err(TypeCheckError::MissingReturn(func.name.clone())),
+            },
+        }
+    }
+
+    env.pop_scope();
+    Ok(TypedFunction {
+        name: func.name.clone(),
+        arguments: func.arguments,
+        statements: typed_statements,
+        return_type: func.return_type,
     })
 }
 
 fn type_check_stmt(stmt: Statement, env: &mut TypeCheckEnv) -> TypeCheckResult<TypedStatement> {
+    env.stack_trace.push(stmt.to_string());
     match stmt {
         Statement::Let(id, expr) => {
             if let Some(_) = env.lookup_var_current_scope(&id) {
                 return Err(TypeCheckError::VarExists(id.clone()));
             }
             let expr_typed = type_check_expr(&expr, env)?;
+            env.stack_trace.pop();
             env.insert_var(id.clone(), expr_typed.get_type())?;
             Ok(TypedStatement::Let(id, expr_typed))
         }
         Statement::Expression(expr) => {
             let expr_typed = type_check_expr(&expr, env)?;
+            env.stack_trace.pop();
             Ok(TypedStatement::Expression(expr_typed))
         }
         Statement::While(expr, stmts) => {
             env.new_scope();
             let expr_typed = type_check_expr(&expr, env)?;
+            env.stack_trace.pop();
             let t = expr_typed.get_type();
             if t != Type::Boolean {
                 return Err(TypeCheckError::TypeMismatch(Type::Boolean, t));
             }
             let typed_stmts = stmts
                 .into_iter()
-                .map(|stmt| type_check_stmt(stmt, env))
+                .map(|stmt| {
+                    let s = type_check_stmt(stmt, env)?;
+                    env.stack_trace.pop();
+                    Ok(s)
+                })
                 .collect::<TypeCheckResult<Vec<TypedStatement>>>()?;
             env.pop_scope();
             return Ok(TypedStatement::While(expr_typed, typed_stmts));
@@ -137,13 +337,18 @@ fn type_check_stmt(stmt: Statement, env: &mut TypeCheckEnv) -> TypeCheckResult<T
         Statement::If(expr, stmts) => {
             env.new_scope();
             let expr_typed = type_check_expr(&expr, env)?;
+            env.stack_trace.pop();
             let t = expr_typed.get_type();
             if t != Type::Boolean {
                 return Err(TypeCheckError::TypeMismatch(Type::Boolean, t));
             }
             let typed_stmts = stmts
                 .into_iter()
-                .map(|stmt| type_check_stmt(stmt, env))
+                .map(|stmt| {
+                    let s = type_check_stmt(stmt, env)?;
+                    env.stack_trace.pop();
+                    Ok(s)
+                })
                 .collect::<TypeCheckResult<Vec<TypedStatement>>>()?;
             env.pop_scope();
             return Ok(TypedStatement::If(expr_typed, typed_stmts));
@@ -151,6 +356,7 @@ fn type_check_stmt(stmt: Statement, env: &mut TypeCheckEnv) -> TypeCheckResult<T
         Statement::IfElse(expr, stmts, else_stmts) => {
             env.new_scope();
             let expr_typed = type_check_expr(&expr, env)?;
+            env.stack_trace.pop();
             let t = expr_typed.get_type();
             if t != Type::Boolean {
                 return Err(TypeCheckError::TypeMismatch(Type::Boolean, t));
@@ -160,13 +366,21 @@ fn type_check_stmt(stmt: Statement, env: &mut TypeCheckEnv) -> TypeCheckResult<T
 
             let typed_stmts = stmts
                 .into_iter()
-                .map(|stmt| type_check_stmt(stmt, env))
+                .map(|stmt| {
+                    let s = type_check_stmt(stmt, env)?;
+                    env.stack_trace.pop();
+                    Ok(s)
+                })
                 .collect::<TypeCheckResult<Vec<TypedStatement>>>()?;
             env.pop_scope();
             env.vars.push(scope);
             let typed_else_stmts = else_stmts
                 .into_iter()
-                .map(|stmt| type_check_stmt(stmt, env))
+                .map(|stmt| {
+                    let s = type_check_stmt(stmt, env)?;
+                    env.stack_trace.pop();
+                    Ok(s)
+                })
                 .collect::<TypeCheckResult<Vec<TypedStatement>>>()?;
             env.pop_scope();
             return Ok(TypedStatement::IfElse(
@@ -175,10 +389,22 @@ fn type_check_stmt(stmt: Statement, env: &mut TypeCheckEnv) -> TypeCheckResult<T
                 typed_else_stmts,
             ));
         }
+        Statement::Return(expr_opt) => {
+            let typed_expr = match expr_opt {
+                Some(expr) => {
+                    let e = type_check_expr(&expr, env)?;
+                    env.stack_trace.pop();
+                    Some(e)
+                }
+                None => None,
+            };
+            return Ok(TypedStatement::Return(typed_expr));
+        }
     }
 }
 
 fn type_check_expr(expr: &Expression, env: &mut TypeCheckEnv) -> TypeCheckResult<TypedExpression> {
+    env.stack_trace.push(expr.to_string());
     Ok(match expr {
         Expression::IntegerLiteral(n) => TypedExpression::IntegerLiteral(n.clone()),
         Expression::BooleanLiteral(b) => TypedExpression::BooleanLiteral(b.clone()),
@@ -213,13 +439,14 @@ fn type_check_expr(expr: &Expression, env: &mut TypeCheckEnv) -> TypeCheckResult
             None => return Err(TypeCheckError::NoSuchVar(name.clone())),
         },
         Expression::Comparison(a, b, op) => {
-            let (a, b, t) = type_check_comparison(a, b, env)?;
+            let (a, b, _) = type_check_comparison(a, b, env)?;
             TypedExpression::Comparison(a, b, op.clone(), Type::Boolean)
         }
         Expression::Assignment(name, expr) => match env.lookup_var(name) {
             None => return Err(TypeCheckError::NoSuchVar(name.clone())),
             Some(t) => {
                 let typed_expr = type_check_expr(expr, env)?;
+                env.stack_trace.pop();
                 if typed_expr.get_type() != t {
                     return Err(TypeCheckError::AssignmentMismatch(
                         typed_expr.get_type(),
@@ -248,10 +475,18 @@ fn type_check_func_args(
         ));
     }
 
+    env.stack_trace.push(name.clone());
+    env.stack_trace
+        .push(args.iter().fold(String::new(), |mut s, a| {
+            s.push_str(&format!("{}, ", a.to_string()));
+            s
+        }));
+
     args.into_iter()
         .enumerate()
         .map(|(i, arg)| {
             let typed = type_check_expr(arg, env)?;
+            env.stack_trace.pop();
             let expected_type = match expected.get(i) {
                 None => {
                     return Err(TypeCheckError::ArgLenMismatch(
@@ -282,7 +517,9 @@ fn type_check_arith(
     env: &mut TypeCheckEnv,
 ) -> TypeCheckResult<(Box<TypedExpression>, Box<TypedExpression>, Type)> {
     let typed_a = type_check_expr(&a, env)?;
+    env.stack_trace.pop();
     let typed_b = type_check_expr(&b, env)?;
+    env.stack_trace.pop();
 
     let type_a = typed_a.get_type();
     let type_b = typed_b.get_type();
@@ -304,7 +541,9 @@ fn type_check_comparison(
     env: &mut TypeCheckEnv,
 ) -> TypeCheckResult<(Box<TypedExpression>, Box<TypedExpression>, Type)> {
     let typed_a = type_check_expr(&a, env)?;
+    env.stack_trace.pop();
     let typed_b = type_check_expr(&b, env)?;
+    env.stack_trace.pop();
 
     let type_a = typed_a.get_type();
     let type_b = typed_b.get_type();
