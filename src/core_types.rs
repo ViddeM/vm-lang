@@ -40,12 +40,14 @@ impl Display for Argument {
 #[derive(Debug, Clone)]
 pub enum Statement {
     Let(Identifier, Expression),
-    While(Expression, Vec<Statement>),
-    If(Expression, Vec<Statement>),
-    IfElse(Expression, Vec<Statement>, Vec<Statement>),
+    While(Expression, Box<Statement>),
+    If(Expression, Box<Statement>),
+    IfElse(Expression, Box<Statement>, Box<Statement>),
     Return(Option<Expression>),
     Expression(Expression),
+    Block(Vec<Statement>),
 }
+
 impl Display for Statement {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -64,6 +66,7 @@ impl Display for Statement {
                     }
                 ),
                 Statement::While(a, _) => format!("while {}", a),
+                Statement::Block(_) => format!("block"),
             }
         )
     }

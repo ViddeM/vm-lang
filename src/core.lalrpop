@@ -64,12 +64,16 @@ Arg: Argument = {
 
 Stmt: Statement = {
     LET <id: Ident> "=" <expr: Expr> ";" => Statement::Let(id, expr),
-    WHILE <expr: Expr> "{" <stmts: Stmt*> "}" => Statement::While(expr, stmts),
-    IF <expr: Expr> "{" <stmts: Stmt*> "}" => Statement::If(expr, stmts),
-    IF <expr: Expr> "{" <stmts: Stmt*> "}" ELSE "{" <else_stmts: Stmt*> "}" => Statement::IfElse(expr, stmts, else_stmts),
+    WHILE <expr: Expr> <b: Block> => Statement::While(expr, Box::new(b)),
+    IF <expr: Expr> <b: Block> => Statement::If(expr, Box::new(b)),
+    IF <expr: Expr> <if_block: Block> ELSE <else_block: Block> => Statement::IfElse(expr, Box::new(if_block), Box::new(else_block)),
     RETURN <expr: Expr> ";" => Statement::Return(Some(expr)),
     RETURN ";" => Statement::Return(None),
     <expr: Expr> ";" => Statement::Expression(expr),
+}
+
+Block: Statement = {
+    "{" <stmts: Stmt*> "}" => Statement::Block(stmts),
 }
 
 Expr: Expression = {

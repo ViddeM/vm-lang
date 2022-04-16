@@ -31,10 +31,11 @@ impl Display for TypedFunction {
 pub enum TypedStatement {
     Let(Identifier, TypedExpression),
     Expression(TypedExpression),
-    If(TypedExpression, Vec<TypedStatement>),
-    IfElse(TypedExpression, Vec<TypedStatement>, Vec<TypedStatement>),
+    If(TypedExpression, Box<TypedStatement>),
+    IfElse(TypedExpression, Box<TypedStatement>, Box<TypedStatement>),
     Return(Option<TypedExpression>),
-    While(TypedExpression, Vec<TypedStatement>),
+    While(TypedExpression, Box<TypedStatement>),
+    Block(Vec<TypedStatement>),
 }
 
 impl Display for TypedStatement {
@@ -55,6 +56,7 @@ impl Display for TypedStatement {
                     }
                 ),
                 TypedStatement::While(a, _) => format!("while {}", a),
+                TypedStatement::Block(_) => format!("block"),
             }
         )
     }

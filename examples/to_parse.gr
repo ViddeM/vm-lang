@@ -10,8 +10,6 @@ fn subtract_stuff(a: int, b: int, c: bool): int {
     } else {
         return 69;
     }
-
-    return -1;
 }
 
 fn main() {

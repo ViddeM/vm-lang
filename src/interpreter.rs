@@ -164,16 +164,13 @@ fn eval_statement(stmt: &TypedStatement, env: &mut InterpretEnv) -> InterpretRes
             eval_expression(&expr, env)?;
             None
         }
-        TypedStatement::While(expr, stmts) => {
+        TypedStatement::While(expr, stmt) => {
             loop {
                 env.new_scope();
                 match eval_expression(&expr, env)? {
                     Value::Boolean(true) => {
-                        for s in stmts.iter() {
-                            if let Some(val) = eval_statement(s, env)? {
-                                env.pop_scope();
-                                return Ok(Some(val));
-                            }
+                        if let Some(s) = eval_statement(stmt, env)? {
+                            return Ok(Some(s));
                         }
                     }
                     Value::Boolean(false) => {
@@ -186,15 +183,12 @@ fn eval_statement(stmt: &TypedStatement, env: &mut InterpretEnv) -> InterpretRes
             }
             None
         }
-        TypedStatement::If(expr, stmts) => {
+        TypedStatement::If(expr, stmt) => {
             env.new_scope();
             match eval_expression(&expr, env)? {
                 Value::Boolean(true) => {
-                    for s in stmts.iter() {
-                        if let Some(val) = eval_statement(s, env)? {
-                            env.pop_scope();
-                            return Ok(Some(val));
-                        }
+                    if let Some(s) = eval_statement(stmt, env)? {
+                        return Ok(Some(s));
                     }
                 }
                 Value::Boolean(false) => {}
@@ -203,23 +197,17 @@ fn eval_statement(stmt: &TypedStatement, env: &mut InterpretEnv) -> InterpretRes
             env.pop_scope();
             None
         }
-        TypedStatement::IfElse(expr, stmts, else_stmts) => {
+        TypedStatement::IfElse(expr, if_stmt, else_stmt) => {
             env.new_scope();
             match eval_expression(&expr, env)? {
                 Value::Boolean(true) => {
-                    for s in stmts.iter() {
-                        if let Some(val) = eval_statement(s, env)? {
-                            env.pop_scope();
-                            return Ok(Some(val));
-                        }
+                    if let Some(s) = eval_statement(if_stmt, env)? {
+                        return Ok(Some(s));
                     }
                 }
                 Value::Boolean(false) => {
-                    for s in else_stmts.iter() {
-                        if let Some(val) = eval_statement(s, env)? {
-                            env.pop_scope();
-                            return Ok(Some(val));
-                        }
+                    if let Some(s) = eval_statement(else_stmt, env)? {
+                        return Ok(Some(s));
                     }
                 }
                 v => return Err(InterpretError::ValTypeError(Type::Boolean, v)),
@@ -232,6 +220,15 @@ fn eval_statement(stmt: &TypedStatement, env: &mut InterpretEnv) -> InterpretRes
                 Some(v) => eval_expression(v, env)?,
             };
             Some(val)
+        }
+        TypedStatement::Block(stmts) => {
+            for s in stmts.iter() {
+                if let Some(val) = eval_statement(s, env)? {
+                    env.pop_scope();
+                    return Ok(Some(val));
+                }
+            }
+            None
         }
     })
 }
