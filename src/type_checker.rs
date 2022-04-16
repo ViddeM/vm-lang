@@ -43,11 +43,14 @@ impl Display for StackTrace {
     }
 }
 
+type FuncEnv = Vec<HashMap<Identifier, Type>>;
+
 #[derive(Debug)]
 pub struct TypeCheckEnv {
+    call_stack: Vec<FuncEnv>,
     // Vec representing the scopes and the hashmap the
     // variables (and their types) within that scope.
-    vars: Vec<HashMap<Identifier, Type>>,
+    vars: FuncEnv,
 
     functions: HashMap<Identifier, (Vec<Type>, Type)>,
 
@@ -63,6 +66,7 @@ impl TypeCheckEnv {
         );
 
         TypeCheckEnv {
+            call_stack: vec![],
             vars: vec![HashMap::new()],
             functions: default_functions,
             stack_trace: StackTrace::new(),
@@ -108,6 +112,16 @@ impl TypeCheckEnv {
 
     fn pop_scope(&mut self) {
         self.vars.pop();
+    }
+
+    /// Assumes that the function arguments exists in the latest scope!
+    fn func_call(&mut self) -> TypeCheckResult<()> {
+        let args = self.vars.pop().ok_or(TypeCheckError::NoScope)?;
+
+        let prev_func = self.vars.clone();
+        self.call_stack.push(prev_func);
+        self.vars = vec![args];
+        Ok(())
     }
 }
 

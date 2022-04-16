@@ -24,9 +24,12 @@ impl Display for Value {
     }
 }
 
+type FunctionEnv = Vec<HashMap<Identifier, Value>>;
+
 #[derive(Debug)]
 pub struct InterpretEnv {
-    vars: Vec<HashMap<Identifier, Value>>,
+    call_stack: Vec<FunctionEnv>,
+    vars: FunctionEnv,
     functions: HashMap<Identifier, TypedFunction>,
 }
 
@@ -47,6 +50,7 @@ impl InterpretEnv {
             },
         );
         Self {
+            call_stack: vec![],
             vars: vec![HashMap::new()],
             functions: default_functions,
         }
@@ -92,6 +96,24 @@ impl InterpretEnv {
 
     fn pop_scope(&mut self) {
         self.vars.pop();
+    }
+
+    /// Prepares the environment for a new function by popping the last scope
+    /// (in which the arguments for the new function is assumed to exist)
+    /// and then pushing the remaining var env to the call_stack.
+    fn new_func(&mut self) -> InterpretResult<()> {
+        let args = self.vars.pop().ok_or(InterpretError::NoScope)?;
+
+        let prev_func = self.vars.clone();
+        self.call_stack.push(prev_func);
+        self.vars = vec![args];
+        Ok(())
+    }
+
+    fn func_return(&mut self) -> InterpretResult<()> {
+        let func_env = self.call_stack.pop().ok_or(InterpretError::NoScope)?;
+        self.vars = func_env;
+        Ok(())
     }
 }
 
@@ -323,7 +345,7 @@ fn call_function(
                 .ok_or(InterpretError::NoSuchVar(number))?;
             match arg_val {
                 Value::Integer(a) => {
-                    println!("Print number {}", a);
+                    println!("{}", a);
                 }
                 val => return Err(InterpretError::ValTypeError(Type::Integer, val)),
             }
@@ -331,14 +353,14 @@ fn call_function(
             Ok(Value::Void)
         }
         _ => {
+            env.new_func();
             for stmt in func.statements.iter() {
                 if let Some(val) = eval_statement(stmt, env)? {
-                    env.pop_scope();
+                    env.func_return()?;
                     return Ok(val);
                 }
             }
-
-            env.pop_scope();
+            env.func_return()?;
             Ok(Value::Void)
         }
     }
