@@ -1,8 +1,16 @@
 [package]
-name = "vm-lang"
+name = "vm_lang"
 version = "0.1.0"
 edition = "2021"
 build = "src/build.rs" # LALRPOP Preprocessing
+
+[[bin]]
+name = "vm_lang"
+path = "src/main.rs"
+
+[lib]
+name = "vm_lang"
+path = "src/lib.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
