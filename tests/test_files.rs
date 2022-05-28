@@ -27,7 +27,10 @@ impl TestError {
                     self.program_error
                 )),
             },
-            s => Err(format!("unrecognized error {}", s)),
+            s => Err(format!(
+                "Expected output {}, got error {:+?}",
+                s, self.program_error
+            )),
         }
     }
 }
@@ -58,7 +61,8 @@ fn run_test(prog: TestProgram) -> Result<(), String> {
             "Failed to open test output file {}",
             OUTPUT_TMP_FILE
         )))?
-        .write_all("".as_bytes());
+        .write_all("".as_bytes())
+        .or(Err(&format!("Failed to write to test output file")))?;
     match vm_lang::run_program(
         &prog.path,
         Box::new(|p| {
