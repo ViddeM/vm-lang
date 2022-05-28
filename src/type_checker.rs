@@ -1,5 +1,4 @@
 use crate::core_types::{Expression, Function, Identifier, Program, Statement, Type};
-use crate::type_checker::TypeCheckError::{BranchTypeDiff, NoSuchFunc, VarExists};
 use crate::typed_types::{TypedExpression, TypedFunction, TypedProgram, TypedStatement};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
@@ -99,7 +98,7 @@ impl TypeCheckEnv {
     fn insert_var(&mut self, id: Identifier, t: Type) -> TypeCheckResult<()> {
         let mut scope = self.vars.pop().ok_or(TypeCheckError::NoScope)?;
         if scope.contains_key(&id) {
-            return Err(VarExists(id.clone()));
+            return Err(TypeCheckError::VarExists(id.clone()));
         }
         scope.insert(id, t);
         self.vars.push(scope);
@@ -121,6 +120,12 @@ impl TypeCheckEnv {
         let prev_func = self.vars.clone();
         self.call_stack.push(prev_func);
         self.vars = vec![args];
+        Ok(())
+    }
+
+    fn func_return(&mut self) -> TypeCheckResult<()> {
+        let func_env = self.call_stack.pop().ok_or(TypeCheckError::NoScope)?;
+        self.vars = func_env;
         Ok(())
     }
 }
@@ -242,6 +247,7 @@ fn type_check_function(func: Function, env: &mut TypeCheckEnv) -> TypeCheckResul
     for arg in func.arguments.iter() {
         env.insert_var(arg.name.clone(), arg.t.clone())?;
     }
+    env.func_call()?;
 
     let mut ret_type: Option<Type> = None;
     let mut last_stmt_type: Option<Type> = None;
@@ -273,7 +279,7 @@ fn type_check_function(func: Function, env: &mut TypeCheckEnv) -> TypeCheckResul
         }
     }
 
-    env.pop_scope();
+    env.func_return()?;
     Ok(TypedFunction {
         name: func.name.clone(),
         arguments: func.arguments,
@@ -408,7 +414,7 @@ fn type_check_expr(expr: &Expression, env: &mut TypeCheckEnv) -> TypeCheckResult
         Expression::FunctionCall(name, args) => {
             let (arg_types, ret_type) = match env.functions.get(name) {
                 Some(vals) => Ok(vals.clone()),
-                None => Err(NoSuchFunc(name.clone())),
+                None => Err(TypeCheckError::NoSuchFunc(name.clone())),
             }?;
 
             let typed_args = type_check_func_args(&name, args, &arg_types, env)?;

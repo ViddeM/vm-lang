@@ -26,15 +26,15 @@ impl Display for Value {
 
 type FunctionEnv = Vec<HashMap<Identifier, Value>>;
 
-#[derive(Debug)]
 pub struct InterpretEnv {
     call_stack: Vec<FunctionEnv>,
     vars: FunctionEnv,
     functions: HashMap<Identifier, TypedFunction>,
+    print: Box<dyn Fn(String)>,
 }
 
 impl InterpretEnv {
-    fn new() -> Self {
+    fn new(print_func: Box<dyn Fn(String)>) -> Self {
         let mut default_functions = HashMap::new();
         let print_number = Identifier::from("print_number");
         default_functions.insert(
@@ -53,6 +53,7 @@ impl InterpretEnv {
             call_stack: vec![],
             vars: vec![HashMap::new()],
             functions: default_functions,
+            print: print_func,
         }
     }
 
@@ -137,8 +138,8 @@ pub enum InterpretError {
 
 pub type InterpretResult<T> = Result<T, InterpretError>;
 
-pub fn interpret(prog: TypedProgram) -> InterpretResult<()> {
-    let mut env = InterpretEnv::new();
+pub fn interpret(prog: TypedProgram, print_func: Box<dyn Fn(String)>) -> InterpretResult<()> {
+    let mut env = InterpretEnv::new(print_func);
 
     for f in prog.functions.into_iter() {
         env.functions.insert(f.name.clone(), f);
@@ -342,7 +343,7 @@ fn call_function(
                 .ok_or(InterpretError::NoSuchVar(number))?;
             match arg_val {
                 Value::Integer(a) => {
-                    println!("{}", a);
+                    (env.print)(format!("{}", a));
                 }
                 val => return Err(InterpretError::ValTypeError(Type::Integer, val)),
             }
@@ -350,7 +351,7 @@ fn call_function(
             Ok(Value::Void)
         }
         _ => {
-            env.new_func();
+            env.new_func()?;
             for stmt in func.statements.iter() {
                 if let Some(val) = eval_statement(stmt, env)? {
                     env.func_return()?;
