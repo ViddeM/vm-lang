@@ -1,4 +1,4 @@
-use crate::core_types::{Argument, ComparisonOperator, Identifier, Type};
+use crate::core_types::{Argument, ComparisonOperator, Identifier, Type, UnaryOperator};
 use crate::typed_types::{TypedExpression, TypedFunction, TypedProgram, TypedStatement};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
@@ -258,6 +258,32 @@ fn eval_expression(expr: &TypedExpression, env: &mut InterpretEnv) -> InterpretR
                 Value::Boolean(b) => Value::Boolean(!b),
                 v => return Err(InterpretError::ValTypeError(Type::Boolean, v)),
             }
+        }
+        TypedExpression::PreUnaryOperation(id, op) => {
+            let val = env
+                .lookup_var(id)
+                .ok_or(InterpretError::NoSuchVar(id.clone()))?;
+            let new_val = match (val, op) {
+                (Value::Integer(i), UnaryOperator::Inc) => i + 1,
+                (Value::Integer(i), UnaryOperator::Dec) => i - 1,
+                (val, _) => return Err(InterpretError::ValTypeError(Type::Integer, val)),
+            };
+
+            env.update_var(id.clone(), Value::Integer(new_val))?;
+            Value::Integer(new_val)
+        }
+        TypedExpression::PostUnaryOperation(id, op) => {
+            let val = env
+                .lookup_var(id)
+                .ok_or(InterpretError::NoSuchVar(id.clone()))?;
+            let new_val = match (&val, op) {
+                (Value::Integer(i), UnaryOperator::Inc) => i + 1,
+                (Value::Integer(i), UnaryOperator::Dec) => i - 1,
+                (val, _) => return Err(InterpretError::ValTypeError(Type::Integer, val.clone())),
+            };
+
+            env.update_var(id.clone(), Value::Integer(new_val))?;
+            val
         }
     })
 }

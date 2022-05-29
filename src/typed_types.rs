@@ -1,4 +1,4 @@
-use crate::core_types::{Argument, ComparisonOperator, Identifier, Type};
+use crate::core_types::{Argument, ComparisonOperator, Identifier, Type, UnaryOperator};
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone)]
@@ -80,6 +80,8 @@ pub enum TypedExpression {
     ),
     Assignment(Identifier, Box<TypedExpression>, Type),
     NotUnaryOperation(Box<TypedExpression>),
+    PreUnaryOperation(Identifier, UnaryOperator),
+    PostUnaryOperation(Identifier, UnaryOperator),
 }
 
 impl Display for TypedExpression {
@@ -106,6 +108,8 @@ impl Display for TypedExpression {
                 TypedExpression::Comparison(a, b, comp, _) => format!("{} {} {}", a, comp, b),
                 TypedExpression::Assignment(a, b, _) => format!("{} = {}", a, b),
                 TypedExpression::NotUnaryOperation(expr) => format!("! {}", expr),
+                TypedExpression::PreUnaryOperation(exp, op) => format!("{} {}", op, exp),
+                TypedExpression::PostUnaryOperation(exp, op) => format!("{} {}", exp, op),
             }
         )
     }
@@ -125,6 +129,8 @@ impl TypedExpression {
             TypedExpression::Comparison(_, _, _, t) => t.clone(),
             TypedExpression::Assignment(_, _, t) => t.clone(),
             TypedExpression::NotUnaryOperation(_) => Type::Boolean,
+            TypedExpression::PreUnaryOperation(_, _) => Type::Integer,
+            TypedExpression::PostUnaryOperation(_, _) => Type::Integer,
         }
     }
 }

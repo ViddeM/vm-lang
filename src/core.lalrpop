@@ -1,4 +1,4 @@
-use crate::core_types::{Program, Statement, Identifier, Expression, ComparisonOperator, Type, Argument, Function};
+use crate::core_types::{Program, Statement, Identifier, Expression, ComparisonOperator, Type, Argument, Function, UnaryOperator};
 
 grammar;
 
@@ -24,6 +24,8 @@ match {
     "<",
     ">",
     "=",
+    "++",
+    "--",
     "+",
     "-",
     "*",
@@ -102,8 +104,17 @@ Factor: Expression = {
     <expa: Factor> "/" <expb: FunctionCall> => Expression::Divide(Box::new(expa), Box::new(expb)),
     PreUnaryOperators,
 }
+
 PreUnaryOperators: Expression = {
     "!" <expr: PostUnaryOperators> => Expression::NotUnaryOperation(Box::new(expr)),
+    "++" <var: Ident> => Expression::PreUnaryOperation(var, UnaryOperator::Inc),
+    "--" <var: Ident> => Expression::PreUnaryOperation(var, UnaryOperator::Dec),
+    PostUnaryOperators,
+}
+
+PostUnaryOperators: Expression = {
+    <var: Ident> "++" => Expression::PostUnaryOperation(var, UnaryOperator::Inc),
+    <var: Ident> "--" => Expression::PostUnaryOperation(var, UnaryOperator::Dec),
     FunctionCall,
 }
 

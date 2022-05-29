@@ -85,6 +85,8 @@ pub enum Expression {
     Comparison(Box<Expression>, Box<Expression>, ComparisonOperator),
     Assignment(Identifier, Box<Expression>),
     NotUnaryOperation(Box<Expression>),
+    PreUnaryOperation(Identifier, UnaryOperator),
+    PostUnaryOperation(Identifier, UnaryOperator),
 }
 
 impl Display for Expression {
@@ -111,6 +113,8 @@ impl Display for Expression {
                 Expression::Comparison(a, b, comp) => format!("{} {} {}", a, comp, b),
                 Expression::Assignment(a, b) => format!("{} = {}", a, b),
                 Expression::NotUnaryOperation(expr) => format!("! {}", expr),
+                Expression::PreUnaryOperation(e, op) => format!("{} {}", op, e),
+                Expression::PostUnaryOperation(e, op) => format!("{} {}", e, op),
             }
         )
     }
@@ -161,6 +165,25 @@ impl Display for ComparisonOperator {
                 ComparisonOperator::GreaterOrEqual => ">=",
                 ComparisonOperator::LessThan => "<",
                 ComparisonOperator::GreaterThan => ">",
+            }
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum UnaryOperator {
+    Inc,
+    Dec,
+}
+
+impl Display for UnaryOperator {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                UnaryOperator::Inc => "++",
+                UnaryOperator::Dec => "--",
             }
         )
     }

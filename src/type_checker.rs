@@ -455,6 +455,24 @@ fn type_check_expr(expr: &Expression, env: &mut TypeCheckEnv) -> TypeCheckResult
             }
             TypedExpression::NotUnaryOperation(Box::new(typed_expr))
         }
+        Expression::PreUnaryOperation(id, op) => {
+            let var_type = env
+                .lookup_var(id)
+                .ok_or(TypeCheckError::NoSuchVar(id.clone()))?;
+            if var_type != Type::Integer {
+                return Err(TypeCheckError::TypeMismatch(Type::Integer, var_type));
+            }
+            TypedExpression::PreUnaryOperation(id.clone(), op.clone())
+        }
+        Expression::PostUnaryOperation(id, op) => {
+            let var_type = env
+                .lookup_var(id)
+                .ok_or(TypeCheckError::NoSuchVar(id.clone()))?;
+            if var_type != Type::Integer {
+                return Err(TypeCheckError::TypeMismatch(Type::Integer, var_type));
+            }
+            TypedExpression::PostUnaryOperation(id.clone(), op.clone())
+        }
     })
 }
 
