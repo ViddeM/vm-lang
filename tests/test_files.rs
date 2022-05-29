@@ -13,6 +13,13 @@ struct TestError {
 impl TestError {
     fn check_against_string(&self, str: &str) -> Result<(), String> {
         match str {
+            "parse" => match self.program_error {
+                ProgramError::LalrpopError(_) => Ok(()),
+                _ => Err(format!(
+                    "Invalid error, expected parse (lalrpop) {:?}",
+                    self.program_error
+                )),
+            },
             "typecheck" => match self.program_error {
                 ProgramError::TypeCheck(_) => Ok(()),
                 _ => Err(format!(
@@ -28,7 +35,7 @@ impl TestError {
                 )),
             },
             s => Err(format!(
-                "Expected output {}, got error {:+?}",
+                "Expected output {}, got error {:?}",
                 s, self.program_error
             )),
         }
