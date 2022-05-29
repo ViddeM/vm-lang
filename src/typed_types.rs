@@ -79,6 +79,7 @@ pub enum TypedExpression {
         Type,
     ),
     Assignment(Identifier, Box<TypedExpression>, Type),
+    NotUnaryOperation(Box<TypedExpression>),
 }
 
 impl Display for TypedExpression {
@@ -104,6 +105,7 @@ impl Display for TypedExpression {
                 TypedExpression::Variable(a, _) => format!("var {}", a),
                 TypedExpression::Comparison(a, b, comp, _) => format!("{} {} {}", a, comp, b),
                 TypedExpression::Assignment(a, b, _) => format!("{} = {}", a, b),
+                TypedExpression::NotUnaryOperation(expr) => format!("! {}", expr),
             }
         )
     }
@@ -122,6 +124,7 @@ impl TypedExpression {
             TypedExpression::Variable(_, t) => t.clone(),
             TypedExpression::Comparison(_, _, _, t) => t.clone(),
             TypedExpression::Assignment(_, _, t) => t.clone(),
+            TypedExpression::NotUnaryOperation(_) => Type::Boolean,
         }
     }
 }

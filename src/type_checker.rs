@@ -445,6 +445,16 @@ fn type_check_expr(expr: &Expression, env: &mut TypeCheckEnv) -> TypeCheckResult
                 TypedExpression::Assignment(name.clone(), Box::new(typed_expr), t)
             }
         },
+        Expression::NotUnaryOperation(expr) => {
+            let typed_expr = type_check_expr(expr, env)?;
+            if typed_expr.get_type() != Type::Boolean {
+                return Err(TypeCheckError::TypeMismatch(
+                    Type::Boolean,
+                    typed_expr.get_type(),
+                ));
+            }
+            TypedExpression::NotUnaryOperation(Box::new(typed_expr))
+        }
     })
 }
 

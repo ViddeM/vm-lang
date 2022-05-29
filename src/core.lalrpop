@@ -28,6 +28,7 @@ match {
     "-",
     "*",
     "/",
+    "!",
     ",",
     ";",
     ":",
@@ -99,6 +100,10 @@ Term: Expression = {
 Factor: Expression = {
     <expa: Factor> "*" <expb: FunctionCall> => Expression::Times(Box::new(expa), Box::new(expb)),
     <expa: Factor> "/" <expb: FunctionCall> => Expression::Divide(Box::new(expa), Box::new(expb)),
+    PreUnaryOperators,
+}
+PreUnaryOperators: Expression = {
+    "!" <expr: PostUnaryOperators> => Expression::NotUnaryOperation(Box::new(expr)),
     FunctionCall,
 }
 

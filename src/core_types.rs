@@ -84,6 +84,7 @@ pub enum Expression {
     FunctionCall(Identifier, Vec<Expression>),
     Comparison(Box<Expression>, Box<Expression>, ComparisonOperator),
     Assignment(Identifier, Box<Expression>),
+    NotUnaryOperation(Box<Expression>),
 }
 
 impl Display for Expression {
@@ -109,6 +110,7 @@ impl Display for Expression {
                 Expression::Variable(a) => format!("var {}", a),
                 Expression::Comparison(a, b, comp) => format!("{} {} {}", a, comp, b),
                 Expression::Assignment(a, b) => format!("{} = {}", a, b),
+                Expression::NotUnaryOperation(expr) => format!("! {}", expr),
             }
         )
     }

@@ -252,6 +252,13 @@ fn eval_expression(expr: &TypedExpression, env: &mut InterpretEnv) -> InterpretR
             env.update_var(name.clone(), val.clone())?;
             val
         }
+        TypedExpression::NotUnaryOperation(expr) => {
+            let val = eval_expression(expr, env)?;
+            match val {
+                Value::Boolean(b) => Value::Boolean(!b),
+                v => return Err(InterpretError::ValTypeError(Type::Boolean, v)),
+            }
+        }
     })
 }
 
