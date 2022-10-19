@@ -1,0 +1,7 @@
+fn main() {
+    let a = 0;
+    while a < 2 {
+        print_number(a);
+        a = a + 1;
+    }
+}

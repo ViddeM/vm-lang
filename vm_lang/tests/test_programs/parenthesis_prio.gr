@@ -1,0 +1,8 @@
+fn main() {
+    print_number(2 * 5 + 1);
+    print_number(2 * (5 + 1));
+    print_number(1 + 2 * 5 + 1);
+    print_number((1 + 2) * 5 + 1);
+    print_number(1 + 2 * (5 + 1));
+    print_number((1 + 2) * (5 + 1));
+}
