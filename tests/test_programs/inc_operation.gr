@@ -1,9 +1,0 @@
-fn main() {
-    let a = 2;
-    print_number(a++);
-    print_number(a);
-
-    print_number(++a);
-    print_number(a);
-
-}
