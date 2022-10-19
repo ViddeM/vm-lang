@@ -1,0 +1,22 @@
+fn lets_do_this_thing(a: int, b: int) :: int {
+    return a + b
+}
+
+enum Boi {
+    A(int),
+    B(bool),
+    C,
+}
+
+struct LeDerp {
+    a: int,
+    b: per,
+    c: pob,
+}
+
+fn main() {
+    let a = lets_do_this_thing(5, 2)
+    let b = lets_do_this_thing(3, 9)
+
+    print(f"{a} + {b} = {a + b}")
+}

@@ -1,0 +1,23 @@
+fn main() {
+    let a = 2;
+    let b = 3;
+    print_number(a + b);
+    print_number(add(a, b));
+    print_number(a + b);
+
+    print_number(b - a);
+    print_number(sub(b, a));
+    print_number(b - a);
+
+    print_number(a - b);
+    print_number(sub(a, b));
+    print_number(a - b);
+}
+
+fn add(a: int, b: int): int {
+    return a + b;
+}
+
+fn sub(a: int, b: int): int {
+    return a - b;
+}
