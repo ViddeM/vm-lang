@@ -1,23 +1,6 @@
-[package]
-name = "vm_lang"
-version = "0.1.0"
-edition = "2021"
-build = "src/build.rs" # LALRPOP Preprocessing
+[workspace]
 
-[[bin]]
-name = "vm_lang"
-path = "src/main.rs"
-
-[lib]
-name = "vm_lang"
-path = "src/lib.rs"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-lalrpop-util = { version = "^0.19", features = ["lexer"] }
-regex = "1"
-thiserror = "1.0"
-
-[build-dependencies]
-lalrpop = "0.19.7"
+members = [
+    "test_generator_macro",
+    "vm_lang",
+]
