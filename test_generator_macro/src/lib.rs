@@ -8,14 +8,15 @@ extern crate proc_macro;
 
 const TEST_PATH_PREFIX: &str = "vm_lang/";
 
+const GR_FILE_TYPE: &str = "gr";
+const EXPECTED_FILE_TYPE: &str = "expected";
+
 #[proc_macro]
 pub fn generate_tests(arg: TokenStream) -> TokenStream {
     let tests_path = parse_macro_input!(arg as LitStr).value();
     let test_progs = get_tests(format!("{}{}", TEST_PATH_PREFIX, tests_path));
 
     let mut funcs = quote! {};
-
-    let run_tests_func_name = Ident::new("run_test", Span::call_site());
 
     for prog in test_progs.into_iter() {
         let prog_name = prog
@@ -26,10 +27,6 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
             .strip_suffix(format!(".{}", GR_FILE_TYPE).as_str())
             .expect("Missing suffix");
         let name = Ident::new(&format!("test_prog_{}", prog_name), Span::call_site());
-        let helper_name = Ident::new(
-            &format!("test_prog_{}_helper", prog_name),
-            Span::call_site(),
-        );
 
         let prog_path = &prog.path;
         let prog_expected = &prog.expected;
@@ -43,46 +40,10 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
 
                 let prog_path = String::from(#prog_path);
                 let prog_expected = String::from(#prog_expected);
-                match #helper_name(prog_path, prog_expected) {
+                match run_tests(prog_path, prog_expected) {
                     Ok(()) => {},
                     Err(e) => println!("Failure, {}", e),
                 }
-            }
-
-            fn #helper_name (prog_path: String, prog_expected: String) -> Result<(), String> {
-                let file_name_without_extension = prog_path
-                    .strip_suffix(".gr")
-                    .expect("Invalid program path");
-                let tmp_output_path = format!("{}_{}", file_name_without_extension, OUTPUT_TMP_FILE);
-
-                File::create(Path::new(&tmp_output_path))
-                        .or(Err(&format!(
-                            "Failed to open test output file {}",
-                            tmp_output_path
-                        )))?
-                        .write_all("".as_bytes())
-                        .or(Err("Failed to write to test output file"))?;
-
-                let mut output = String::new();
-                match vm_lang::run_program(
-                    &prog_path,
-                    &mut |p| output.push_str(&p),
-                ) {
-                    Ok(()) => {
-                        let got = output
-                            .strip_suffix("\n")
-                            .ok_or(String::from("Failed to strip newline"))?;
-                        println!("Got\n{}\n\nExpected\n{}\n", got, prog_expected);
-                        assert_eq!(&got, &prog_expected);
-                    }
-                    Err(e) => {
-                        assert_eq!(
-                        TestError::from(e).check_against_string(&prog_expected),
-                        Ok(())
-                    );
-                    }
-                }
-                Ok(())
             }
         };
     }
@@ -140,6 +101,29 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
                 }
             }
 
+            fn run_tests(prog_path: String, prog_expected: String) -> Result<(), String> {
+                let mut output = String::new();
+                match vm_lang::run_program(
+                    &prog_path,
+                    &mut |p| output.push_str(&p),
+                ) {
+                    Ok(()) => {
+                        let got = output
+                            .strip_suffix("\n")
+                            .ok_or(String::from("Failed to strip newline"))?;
+                        println!("Got\n{}\n\nExpected\n{}\n", got, prog_expected);
+                        assert_eq!(&got, &prog_expected);
+                    }
+                    Err(e) => {
+                        assert_eq!(
+                        TestError::from(e).check_against_string(&prog_expected),
+                        Ok(())
+                    );
+                    }
+                }
+                Ok(())
+            }
+
             #funcs
         }
     };
@@ -152,8 +136,6 @@ struct TestProgram {
     expected: String,
 }
 
-const GR_FILE_TYPE: &str = "gr";
-const EXPECTED_FILE_TYPE: &str = "expected";
 fn get_tests(tests_path: String) -> Vec<TestProgram> {
     let test_path = Path::new(&tests_path);
     fs::read_dir(test_path)
