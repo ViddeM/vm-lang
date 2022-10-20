@@ -66,6 +66,7 @@ impl Display for TypedStatement {
 pub enum TypedExpression {
     IntegerLiteral(i64),
     BooleanLiteral(bool),
+    StringLiteral(String),
     Plus(Box<TypedExpression>, Box<TypedExpression>, Type),
     Minus(Box<TypedExpression>, Box<TypedExpression>, Type),
     Times(Box<TypedExpression>, Box<TypedExpression>, Type),
@@ -92,6 +93,7 @@ impl Display for TypedExpression {
             match self {
                 TypedExpression::IntegerLiteral(i) => i.to_string(),
                 TypedExpression::BooleanLiteral(b) => b.to_string(),
+                TypedExpression::StringLiteral(s) => s.to_string(),
                 TypedExpression::Plus(a, b, _) => format!("{} + {}", a, b),
                 TypedExpression::Minus(a, b, _) => format!("{} - {}", a, b),
                 TypedExpression::Times(a, b, _) => format!("{} * {}", a, b),
@@ -120,6 +122,7 @@ impl TypedExpression {
         match self {
             TypedExpression::IntegerLiteral(_) => Type::Integer,
             TypedExpression::BooleanLiteral(_) => Type::Boolean,
+            TypedExpression::StringLiteral(_) => Type::String,
             TypedExpression::Plus(_, _, t) => t.clone(),
             TypedExpression::Minus(_, _, t) => t.clone(),
             TypedExpression::Times(_, _, t) => t.clone(),

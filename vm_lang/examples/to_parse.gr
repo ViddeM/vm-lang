@@ -23,5 +23,6 @@ fn main() {
 }
 
 fn add_stuff(c: int, d: int): int {
+    print_string("Function add_stuff");
     return c + d + 1;
 }

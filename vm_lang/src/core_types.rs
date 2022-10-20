@@ -76,6 +76,7 @@ impl Display for Statement {
 pub enum Expression {
     IntegerLiteral(i64),
     BooleanLiteral(bool),
+    StringLiteral(String),
     Variable(Identifier),
     Plus(Box<Expression>, Box<Expression>),
     Minus(Box<Expression>, Box<Expression>),
@@ -97,6 +98,7 @@ impl Display for Expression {
             match self {
                 Expression::IntegerLiteral(i) => i.to_string(),
                 Expression::BooleanLiteral(b) => b.to_string(),
+                Expression::StringLiteral(s) => s.to_string(),
                 Expression::Plus(a, b) => format!("{} + {}", a, b),
                 Expression::Minus(a, b) => format!("{} - {}", a, b),
                 Expression::Times(a, b) => format!("{} * {}", a, b),
@@ -126,6 +128,7 @@ pub type Identifier = String;
 pub enum Type {
     Integer,
     Boolean,
+    String,
     Void,
 }
 
@@ -138,6 +141,7 @@ impl Display for Type {
                 Type::Integer => "Integer",
                 Type::Boolean => "Boolean",
                 Type::Void => "Void",
+                Type::String => "String",
             }
         )
     }

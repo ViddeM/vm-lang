@@ -1,0 +1,20 @@
+fn main() {
+    let a = "asd123";
+    let b = "b123";
+
+    if (a == b) {
+        print_number(1);
+    } else {
+        print_number(2);
+    }
+
+    let c = "asd123";
+    if (a == c) {
+        print_number(1);
+    } else {
+        print_number(2);
+    }
+
+    print_string("some_cool_text");
+    print_string(c);
+}

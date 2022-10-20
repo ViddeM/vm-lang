@@ -7,6 +7,7 @@ use std::fmt::{Display, Formatter};
 pub enum Value {
     Integer(i64),
     Boolean(bool),
+    String(String),
     Void,
 }
 
@@ -18,6 +19,7 @@ impl Display for Value {
             match self {
                 Value::Integer(i) => format!("Integer({})", i),
                 Value::Boolean(b) => format!("Boolean({})", b),
+                Value::String(s) => format!("String({})", s),
                 Value::Void => String::from("Void"),
             }
         )
@@ -49,6 +51,21 @@ impl<'a> InterpretEnv<'a> {
                 return_type: Type::Void,
             },
         );
+
+        let print_string = Identifier::from("print_string");
+        default_functions.insert(
+            print_string.clone(),
+            TypedFunction {
+                name: print_string.clone(),
+                arguments: vec![Argument {
+                    name: Identifier::from("str"),
+                    t: Type::String,
+                }],
+                statements: vec![],
+                return_type: Type::String,
+            },
+        );
+
         Self {
             call_stack: vec![],
             vars: vec![HashMap::new()],
@@ -238,6 +255,7 @@ fn eval_expression(expr: &TypedExpression, env: &mut InterpretEnv) -> InterpretR
     Ok(match expr {
         TypedExpression::IntegerLiteral(i) => Value::Integer(i.clone()),
         TypedExpression::BooleanLiteral(b) => Value::Boolean(b.clone()),
+        TypedExpression::StringLiteral(s) => Value::String(s.clone()),
         TypedExpression::Plus(a, b, _) => eval_arith(&a, &b, env, |a, b| a + b)?,
         TypedExpression::Minus(a, b, _) => eval_arith(&a, &b, env, |a, b| a - b)?,
         TypedExpression::Times(a, b, _) => eval_arith(&a, &b, env, |a, b| a * b)?,
@@ -321,6 +339,7 @@ fn eval_comparison(
     let cmp_ok = match (&val_a, &val_b) {
         (Value::Integer(a), Value::Integer(b)) => compare(a, b, op),
         (Value::Boolean(a), Value::Boolean(b)) => compare(a, b, op),
+        (Value::String(a), Value::String(b)) => compare(a, b, op),
         _ => {
             return Err(InterpretError::CompareValueMismatch(
                 val_a.clone(),
@@ -379,6 +398,18 @@ fn call_function(
                     (env.print)(format!("{}", a));
                 }
                 val => return Err(InterpretError::ValTypeError(Type::Integer, val)),
+            }
+            env.pop_scope();
+            Ok(Value::Void)
+        }
+        "print_string" => {
+            let str = Identifier::from("str");
+            let arg_val = env.lookup_var(&str).ok_or(InterpretError::NoSuchVar(str))?;
+            match arg_val {
+                Value::String(s) => {
+                    (env.print)(format!("{}", s));
+                }
+                val => return Err(InterpretError::ValTypeError(Type::String, val)),
             }
             env.pop_scope();
             Ok(Value::Void)
