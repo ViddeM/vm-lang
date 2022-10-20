@@ -1,0 +1,10 @@
+fn main() {
+    let a = true;
+    print_bool(a);
+    
+    let b = false;
+    print_bool(b);
+    
+    print_bool(a || b);
+    print_bool(a && b);
+}

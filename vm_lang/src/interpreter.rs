@@ -1,4 +1,6 @@
-use crate::core_types::{Argument, ComparisonOperator, Identifier, Type, UnaryOperator};
+use crate::core_types::{
+    Argument, BooleanComparisonOperator, ComparisonOperator, Identifier, Type, UnaryOperator,
+};
 use crate::typed_types::{TypedExpression, TypedFunction, TypedProgram, TypedStatement};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
@@ -62,7 +64,21 @@ impl<'a> InterpretEnv<'a> {
                     t: Type::String,
                 }],
                 statements: vec![],
-                return_type: Type::String,
+                return_type: Type::Void,
+            },
+        );
+
+        let print_bool = Identifier::from("print_bool");
+        default_functions.insert(
+            print_bool.clone(),
+            TypedFunction {
+                name: print_bool.clone(),
+                arguments: vec![Argument {
+                    name: Identifier::from("b"),
+                    t: Type::Boolean,
+                }],
+                statements: vec![],
+                return_type: Type::Void,
             },
         );
 
@@ -265,6 +281,7 @@ fn eval_expression(expr: &TypedExpression, env: &mut InterpretEnv) -> InterpretR
             .lookup_var(name)
             .ok_or(InterpretError::NoSuchVar(name.clone()))?,
         TypedExpression::Comparison(a, b, op, _) => eval_comparison(a, b, op, env)?,
+        TypedExpression::BooleanComparison(a, b, op) => eval_boolean_cmparison(a, b, op, env)?,
         TypedExpression::Assignment(name, expr, _) => {
             let val = eval_expression(expr, env)?;
             env.update_var(name.clone(), val.clone())?;
@@ -365,6 +382,25 @@ where
     }
 }
 
+fn eval_boolean_cmparison(
+    a: &TypedExpression,
+    b: &TypedExpression,
+    op: &BooleanComparisonOperator,
+    env: &mut InterpretEnv,
+) -> InterpretResult<Value> {
+    let val_a = eval_expression(a, env)?;
+    let val_b = eval_expression(b, env)?;
+
+    let cmp_res = match (val_a, val_b) {
+        (Value::Boolean(a), Value::Boolean(b)) => match op {
+            BooleanComparisonOperator::And => a && b,
+            BooleanComparisonOperator::Or => a || b,
+        },
+        (a, b) => return Err(InterpretError::CompareValueMismatch(a.clone(), b.clone())),
+    };
+    Ok(Value::Boolean(cmp_res))
+}
+
 fn call_function(
     name: &Identifier,
     args: &Vec<TypedExpression>,
@@ -384,9 +420,11 @@ fn call_function(
             args.len(),
         ))?;
         let val = eval_expression(a, env)?;
+        println!("Evaluated argument {} to {}", arg.name.clone(), val);
         env.insert_var(arg.name.clone(), val)?;
     }
 
+    env.new_func()?;
     match name.as_str() {
         "print_number" => {
             let number = Identifier::from("number");
@@ -399,7 +437,7 @@ fn call_function(
                 }
                 val => return Err(InterpretError::ValTypeError(Type::Integer, val)),
             }
-            env.pop_scope();
+            env.func_return()?;
             Ok(Value::Void)
         }
         "print_string" => {
@@ -411,11 +449,24 @@ fn call_function(
                 }
                 val => return Err(InterpretError::ValTypeError(Type::String, val)),
             }
-            env.pop_scope();
+            env.func_return()?;
+            Ok(Value::Void)
+        }
+        "print_bool" => {
+            let b_id = Identifier::from("b");
+            let arg_val = env
+                .lookup_var(&b_id)
+                .ok_or(InterpretError::NoSuchVar(b_id))?;
+            match arg_val {
+                Value::Boolean(b) => {
+                    (env.print)(format!("{}", b));
+                }
+                val => return Err(InterpretError::ValTypeError(Type::Boolean, val)),
+            }
+            env.func_return()?;
             Ok(Value::Void)
         }
         _ => {
-            env.new_func()?;
             for stmt in func.statements.iter() {
                 if let Some(val) = eval_statement(stmt, env)? {
                     env.func_return()?;

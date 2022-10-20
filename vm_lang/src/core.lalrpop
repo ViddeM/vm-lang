@@ -1,4 +1,4 @@
-use crate::core_types::{Program, Statement, Identifier, Expression, ComparisonOperator, Type, Argument, Function, UnaryOperator};
+use crate::core_types::{Program, Statement, Identifier, Expression, ComparisonOperator, BooleanComparisonOperator, Type, Argument, Function, UnaryOperator};
 
 grammar;
 
@@ -28,6 +28,8 @@ match {
     "=",
     "++",
     "--",
+    "&&",
+    "||",
     "+",
     "-",
     "*",
@@ -93,6 +95,7 @@ Assignment: Expression = {
 
 Comparison: Expression = {
     <a: Term> <op: CmpOp> <b: Term> => Expression::Comparison(Box::new(a), Box::new(b), op),
+    <a: Term> <op: BoolCmpOp> <b: Term> => Expression::BooleanComparison(Box::new(a), Box::new(b), op),
     Term,
 }
 
@@ -154,7 +157,12 @@ CmpOp: ComparisonOperator = {
     "<=" => ComparisonOperator::LessOrEqual,
     ">=" => ComparisonOperator::GreaterOrEqual,
     "<" => ComparisonOperator::LessThan,
-    ">" => ComparisonOperator::GreaterThan,
+    ">" => ComparisonOperator::GreaterThan    
+}
+
+BoolCmpOp: BooleanComparisonOperator = {
+    "||" => BooleanComparisonOperator::Or,
+    "&&" => BooleanComparisonOperator::And,
 }
 
 Type: Type = {
