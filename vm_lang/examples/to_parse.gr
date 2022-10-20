@@ -24,5 +24,6 @@ fn main() {
 
 fn add_stuff(c: int, d: int): int {
     print_string("Function add_stuff");
+    print_bool(true);
     return c + d + 1;
 }

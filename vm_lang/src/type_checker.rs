@@ -67,6 +67,10 @@ impl TypeCheckEnv {
             Identifier::from("print_string"),
             (vec![Type::String], Type::Void),
         );
+        default_functions.insert(
+            Identifier::from("print_bool"),
+            (vec![Type::Boolean], Type::Void),
+        );
 
         TypeCheckEnv {
             call_stack: vec![],

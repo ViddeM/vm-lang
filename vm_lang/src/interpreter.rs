@@ -62,7 +62,21 @@ impl<'a> InterpretEnv<'a> {
                     t: Type::String,
                 }],
                 statements: vec![],
-                return_type: Type::String,
+                return_type: Type::Void,
+            },
+        );
+
+        let print_bool = Identifier::from("print_bool");
+        default_functions.insert(
+            print_bool.clone(),
+            TypedFunction {
+                name: print_bool.clone(),
+                arguments: vec![Argument {
+                    name: Identifier::from("b"),
+                    t: Type::Boolean,
+                }],
+                statements: vec![],
+                return_type: Type::Void,
             },
         );
 
@@ -410,6 +424,20 @@ fn call_function(
                     (env.print)(format!("{}", s));
                 }
                 val => return Err(InterpretError::ValTypeError(Type::String, val)),
+            }
+            env.pop_scope();
+            Ok(Value::Void)
+        }
+        "print_bool" => {
+            let b_id = Identifier::from("b");
+            let arg_val = env
+                .lookup_var(&b_id)
+                .ok_or(InterpretError::NoSuchVar(b_id))?;
+            match arg_val {
+                Value::Boolean(b) => {
+                    (env.print)(format!("{}", b));
+                }
+                val => return Err(InterpretError::ValTypeError(Type::Boolean, val)),
             }
             env.pop_scope();
             Ok(Value::Void)
