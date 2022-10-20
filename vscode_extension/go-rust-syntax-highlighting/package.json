@@ -1,0 +1,25 @@
+{
+  "name": "go-rust-syntax-highlighting",
+  "displayName": "go-rust-syntax-highlighting",
+  "description": "Syntax highlighting for the go-rust language",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.72.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "go-rust",
+      "aliases": ["GoRust", "go-rust"],
+      "extensions": [".gr"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "go-rust",
+      "scopeName": "source.gr",
+      "path": "./syntaxes/go-rust.tmLanguage.json"
+    }]
+  }
+}
