@@ -84,6 +84,7 @@ pub enum Expression {
     Divide(Box<Expression>, Box<Expression>),
     FunctionCall(Identifier, Vec<Expression>),
     Comparison(Box<Expression>, Box<Expression>, ComparisonOperator),
+    BooleanComparison(Box<Expression>, Box<Expression>, BooleanComparisonOperator),
     Assignment(Identifier, Box<Expression>),
     NotUnaryOperation(Box<Expression>),
     PreUnaryOperation(Identifier, UnaryOperator),
@@ -113,6 +114,7 @@ impl Display for Expression {
                 ),
                 Expression::Variable(a) => format!("var {}", a),
                 Expression::Comparison(a, b, comp) => format!("{} {} {}", a, comp, b),
+                Expression::BooleanComparison(a, b, comp) => format!("{} {} {}", a, comp, b),
                 Expression::Assignment(a, b) => format!("{} = {}", a, b),
                 Expression::NotUnaryOperation(expr) => format!("! {}", expr),
                 Expression::PreUnaryOperation(e, op) => format!("{} {}", op, e),
@@ -188,6 +190,25 @@ impl Display for UnaryOperator {
             match self {
                 UnaryOperator::Inc => "++",
                 UnaryOperator::Dec => "--",
+            }
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum BooleanComparisonOperator {
+    And,
+    Or,
+}
+
+impl Display for BooleanComparisonOperator {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                BooleanComparisonOperator::And => "&&",
+                BooleanComparisonOperator::Or => "||",
             }
         )
     }

@@ -1,4 +1,6 @@
-use crate::core_types::{Argument, ComparisonOperator, Identifier, Type, UnaryOperator};
+use crate::core_types::{
+    Argument, BooleanComparisonOperator, ComparisonOperator, Identifier, Type, UnaryOperator,
+};
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone)]
@@ -56,6 +58,7 @@ impl Display for TypedStatement {
                     }
                 ),
                 TypedStatement::While(a, _) => format!("while {}", a),
+
                 TypedStatement::Block(_) => format!("block"),
             }
         )
@@ -78,6 +81,11 @@ pub enum TypedExpression {
         Box<TypedExpression>,
         ComparisonOperator,
         Type,
+    ),
+    BooleanComparison(
+        Box<TypedExpression>,
+        Box<TypedExpression>,
+        BooleanComparisonOperator,
     ),
     Assignment(Identifier, Box<TypedExpression>, Type),
     NotUnaryOperation(Box<TypedExpression>),
@@ -108,6 +116,7 @@ impl Display for TypedExpression {
                 ),
                 TypedExpression::Variable(a, _) => format!("var {}", a),
                 TypedExpression::Comparison(a, b, comp, _) => format!("{} {} {}", a, comp, b),
+                TypedExpression::BooleanComparison(a, b, comp) => format!("{} {} {}", a, comp, b),
                 TypedExpression::Assignment(a, b, _) => format!("{} = {}", a, b),
                 TypedExpression::NotUnaryOperation(expr) => format!("! {}", expr),
                 TypedExpression::PreUnaryOperation(exp, op) => format!("{} {}", op, exp),
@@ -130,6 +139,7 @@ impl TypedExpression {
             TypedExpression::FunctionCall(_, _, t) => t.clone(),
             TypedExpression::Variable(_, t) => t.clone(),
             TypedExpression::Comparison(_, _, _, t) => t.clone(),
+            TypedExpression::BooleanComparison(_, _, _) => Type::Boolean,
             TypedExpression::Assignment(_, _, t) => t.clone(),
             TypedExpression::NotUnaryOperation(_) => Type::Boolean,
             TypedExpression::PreUnaryOperation(_, _) => Type::Integer,

@@ -1,4 +1,6 @@
-use crate::core_types::{Expression, Function, Identifier, Program, Statement, Type};
+use crate::core_types::{
+    BooleanComparisonOperator, Expression, Function, Identifier, Program, Statement, Type,
+};
 use crate::typed_types::{TypedExpression, TypedFunction, TypedProgram, TypedStatement};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
@@ -158,6 +160,8 @@ pub enum TypeCheckError {
     ArithInvalidType(Type),
     #[error("Cannot compare type `{0}` with type `{1}`")]
     CmpTypeMismatch(Type, Type),
+    #[error("Invalid type `{0}` for boolean operator `{1}`")]
+    InvalidBoolCmpType(BooleanComparisonOperator, Type),
     #[error("Cannot assign type `{0}` to variable `{1}` of type `{2}`")]
     AssignmentMismatch(Type, Identifier, Type),
     #[error("A function with name `{0}` already exists")]
@@ -437,6 +441,13 @@ fn type_check_expr(expr: &Expression, env: &mut TypeCheckEnv) -> TypeCheckResult
         Expression::Comparison(a, b, op) => {
             let (a, b, _) = type_check_comparison(a, b, env)?;
             TypedExpression::Comparison(a, b, op.clone(), Type::Boolean)
+        }
+        Expression::BooleanComparison(a, b, op) => {
+            let (a, b, _) = type_check_comparison(a, b, env)?;
+            if a.get_type() != Type::Boolean {
+                return Err(TypeCheckError::InvalidBoolCmpType(op.clone(), a.get_type()));
+            }
+            TypedExpression::BooleanComparison(a, b, op.clone())
         }
         Expression::Assignment(name, expr) => match env.lookup_var(name) {
             None => return Err(TypeCheckError::NoSuchVar(name.clone())),
