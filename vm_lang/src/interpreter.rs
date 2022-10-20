@@ -26,15 +26,15 @@ impl Display for Value {
 
 type FunctionEnv = Vec<HashMap<Identifier, Value>>;
 
-pub struct InterpretEnv {
+pub struct InterpretEnv<'a> {
     call_stack: Vec<FunctionEnv>,
     vars: FunctionEnv,
     functions: HashMap<Identifier, TypedFunction>,
-    print: Box<dyn Fn(String)>,
+    print: &'a mut dyn FnMut(String),
 }
 
-impl InterpretEnv {
-    fn new(print_func: Box<dyn Fn(String)>) -> Self {
+impl<'a> InterpretEnv<'a> {
+    fn new(print_func: &'a mut dyn FnMut(String)) -> Self {
         let mut default_functions = HashMap::new();
         let print_number = Identifier::from("print_number");
         default_functions.insert(
@@ -138,7 +138,7 @@ pub enum InterpretError {
 
 pub type InterpretResult<T> = Result<T, InterpretError>;
 
-pub fn interpret(prog: TypedProgram, print_func: Box<dyn Fn(String)>) -> InterpretResult<()> {
+pub fn interpret(prog: TypedProgram, print_func: &mut dyn FnMut(String)) -> InterpretResult<()> {
     let mut env = InterpretEnv::new(print_func);
 
     for f in prog.functions.into_iter() {
