@@ -1,0 +1,47 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "GoRust",
+	"patterns": [
+		{
+			"comment": "Include blank lines",
+			"match": "^\\s*$"
+		},
+		{
+			"include": "#line-comment"
+		},
+
+
+
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#strings"
+		}
+	],
+	"repository": {
+		"line-comment": {
+			"match": "//(.)*\\n?",
+			"name": "comment"
+		},
+
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.go-rust",
+				"match": "\\b(if|while|for|return)\\b"
+			}]
+		},
+		"strings": {
+			"name": "string.quoted.double.go-rust",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.go-rust",
+					"match": "\\\\."
+				}
+			]
+		}
+	},
+	"scopeName": "source.gr"
+}
