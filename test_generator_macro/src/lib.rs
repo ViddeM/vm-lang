@@ -62,32 +62,14 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
                         )))?
                         .write_all("".as_bytes())
                         .or(Err("Failed to write to test output file"))?;
+
+                let mut output = String::new();
                 match vm_lang::run_program(
                     &prog_path,
-                    Box::new(|p| {
-                        let prog_path = String::from(#prog_path);
-                        let file_path_name = prog_path
-                                    .strip_suffix(".gr")
-                                    .expect("Invalid program path");
-                        let path = format!("{}_{}", file_path_name, OUTPUT_TMP_FILE);
-
-                        let mut file = fs::OpenOptions::new()
-                            .write(true)
-                            .append(true)
-                            .open(Path::new(&path))
-                            .expect(&format!(
-                                "Failed to open test output file {}",
-                                &file_path_name
-                        ));
-                        file.write_all(format!("{}\n", p).as_bytes()).unwrap();
-                    }),
+                    &mut |p| output.push_str(&p),
                 ) {
                     Ok(()) => {
-                        let got = fs::read_to_string(&tmp_output_path).or(Err(&format!(
-                            "Failed to open test output file {}",
-                            &tmp_output_path
-                        )))?;
-                        let got = got
+                        let got = output
                             .strip_suffix("\n")
                             .ok_or(String::from("Failed to strip newline"))?;
                         println!("Got\n{}\n\nExpected\n{}\n", got, prog_expected);
