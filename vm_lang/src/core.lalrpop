@@ -12,7 +12,9 @@ match {
     r"else" => ELSE,
     r"int" => INT,
     r"bool" => BOOL,
+    r"String" => STRING,
     r"return" => RETURN,
+    r"for" => FOR,
     "(",
     ")",
     "{",
@@ -36,6 +38,7 @@ match {
     ":",
     "",
     r"[-]?\d+" => INTEGER,
+    r#""[^"]*""# => STR,
     r"\s*" => { }, // The default whitespace skipping is disabled an `ignore pattern` is specified
     r"//[^\n\r]*[\n\r]*" => { }, // Skip `// comments`
 } else {
@@ -126,9 +129,14 @@ FunctionCall: Expression = {
 Literal: Expression = {
     FALSE => Expression::BooleanLiteral(false),
     TRUE => Expression::BooleanLiteral(true),
+    <lit: Str> => Expression::StringLiteral(lit),
     <num: INTEGER> => Expression::IntegerLiteral(num.parse::<i64>().unwrap()),
     <var: Ident> => Expression::Variable(var),
     "(" <expr: Expr> ")" => expr,
+}
+
+Str: String = {
+    STR => String::from(<>.strip_prefix("\"").unwrap().strip_suffix("\"").unwrap())
 }
 
 Ident: Identifier = {
@@ -152,4 +160,5 @@ CmpOp: ComparisonOperator = {
 Type: Type = {
     INT => Type::Integer,
     BOOL => Type::Boolean,
+    STRING => Type::String,
 }

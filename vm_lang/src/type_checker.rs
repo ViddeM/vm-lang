@@ -63,6 +63,10 @@ impl TypeCheckEnv {
             Identifier::from("print_number"),
             (vec![Type::Integer], Type::Void),
         );
+        default_functions.insert(
+            Identifier::from("print_string"),
+            (vec![Type::String], Type::Void),
+        );
 
         TypeCheckEnv {
             call_stack: vec![],
@@ -395,6 +399,7 @@ fn type_check_expr(expr: &Expression, env: &mut TypeCheckEnv) -> TypeCheckResult
     Ok(match expr {
         Expression::IntegerLiteral(n) => TypedExpression::IntegerLiteral(n.clone()),
         Expression::BooleanLiteral(b) => TypedExpression::BooleanLiteral(b.clone()),
+        Expression::StringLiteral(s) => TypedExpression::StringLiteral(s.clone()),
         Expression::Plus(a, b) => {
             let (a, b, t) = type_check_arith(a, b, env)?;
             TypedExpression::Plus(a, b, t)
