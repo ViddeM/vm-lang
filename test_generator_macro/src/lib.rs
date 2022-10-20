@@ -42,7 +42,7 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
                 let prog_expected = String::from(#prog_expected);
                 match run_tests(prog_path, prog_expected) {
                     Ok(()) => {},
-                    Err(e) => println!("Failure, {}", e),
+                    Err(e) => panic!("Failure, {}", e),
                 }
             }
         };
@@ -56,8 +56,6 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
             use std::io::Write;
             use std::path::Path;
             use std::{fs, io};
-
-            const OUTPUT_TMP_FILE: &str = "__tmp_test_output.test";
 
             struct TestError {
                 program_error: ProgramError,
@@ -105,20 +103,21 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
                 let mut output = String::new();
                 match vm_lang::run_program(
                     &prog_path,
-                    &mut |p| output.push_str(&p),
+                    &mut |p| output.push_str(&format!("{}\n", p)),
                 ) {
                     Ok(()) => {
                         let got = output
                             .strip_suffix("\n")
                             .ok_or(String::from("Failed to strip newline"))?;
+
                         println!("Got\n{}\n\nExpected\n{}\n", got, prog_expected);
                         assert_eq!(&got, &prog_expected);
                     }
                     Err(e) => {
                         assert_eq!(
-                        TestError::from(e).check_against_string(&prog_expected),
-                        Ok(())
-                    );
+                            TestError::from(e).check_against_string(&prog_expected),
+                            Ok(())
+                        );
                     }
                 }
                 Ok(())
