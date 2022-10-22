@@ -12,11 +12,15 @@ use lalrpop_util::lalrpop_mod;
 
 lalrpop_mod!(pub core);
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum ProgramError {
+    #[error("Failed to read file: {0}")]
     FileRead(String),
+    #[error("Typechecking failed: {0}")]
     TypeCheck(TypeCheckError),
+    #[error("Interpretation failed: {0}")]
     InterpretError(InterpretError),
+    #[error("Parsing failed failed: {0}")]
     LalrpopError(String),
 }
 
