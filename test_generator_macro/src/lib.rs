@@ -56,9 +56,16 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
             use std::io::Write;
             use std::path::Path;
             use std::{fs, io};
+            use std::fmt::Display;
 
             struct TestError {
                 program_error: ProgramError,
+            }
+
+            impl Display for TestError {
+                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                    write!(f, "Program error: {}", self.program_error)
+                }
             }
 
             impl TestError {
@@ -110,14 +117,14 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
                             .strip_suffix("\n")
                             .ok_or(String::from("Failed to strip newline"))?;
 
-                        println!("Got\n{}\n\nExpected\n{}\n", got, prog_expected);
-                        assert_eq!(&got, &prog_expected);
+                        if got != prog_expected {
+                            panic!("\nExpected\n{}\n\nGot\n{}\n", prog_expected, got);
+                        }
                     }
                     Err(e) => {
-                        assert_eq!(
-                            TestError::from(e).check_against_string(&prog_expected),
-                            Ok(())
-                        );
+                        if let Err(e) = TestError::from(e).check_against_string(&prog_expected) {
+                            panic!("\nExpected error {}\nGot {}\n", prog_expected, e);
+                        }
                     }
                 }
                 Ok(())
