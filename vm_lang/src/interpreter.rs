@@ -1,33 +1,10 @@
-use crate::gr_std_lib::builtins::default_function_definitions;
+use crate::gr_std_lib::builtins::{default_function_definitions, execute_builtin, BuiltinError};
 use crate::types::core_types::{
     BooleanComparisonOperator, ComparisonOperator, Identifier, Type, UnaryOperator,
 };
 use crate::types::typed_types::{TypedExpression, TypedFunction, TypedProgram, TypedStatement};
+use crate::types::value::Value;
 use std::collections::HashMap;
-use std::fmt::{Display, Formatter};
-
-#[derive(Debug, Clone)]
-pub enum Value {
-    Integer(i64),
-    Boolean(bool),
-    String(String),
-    Void,
-}
-
-impl Display for Value {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Value::Integer(i) => format!("Integer({})", i),
-                Value::Boolean(b) => format!("Boolean({})", b),
-                Value::String(s) => format!("String({})", s),
-                Value::Void => String::from("Void"),
-            }
-        )
-    }
-}
 
 type FunctionEnv = Vec<HashMap<Identifier, Value>>;
 
@@ -38,6 +15,7 @@ pub struct InterpretEnv<'a> {
     print: &'a mut dyn FnMut(String),
 }
 
+#[derive(Clone, Debug)]
 pub enum InterpretFunction {
     Builtin,
     Defined(TypedFunction),
@@ -118,6 +96,14 @@ impl<'a> InterpretEnv<'a> {
         self.vars = func_env;
         Ok(())
     }
+
+    fn get_func(&self, name: &Identifier) -> InterpretResult<InterpretFunction> {
+        let func = self
+            .functions
+            .get(name)
+            .ok_or(InterpretError::NoSuchFunction(name.clone()))?;
+        Ok(func.clone())
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -136,6 +122,8 @@ pub enum InterpretError {
     NoSuchVar(Identifier),
     #[error("Cannot compare value `{0}` with value `{1}`")]
     CompareValueMismatch(Value, Value),
+    #[error("Error whilst executing builtin function: `{0}`")]
+    BuiltinError(#[from] BuiltinError),
 }
 
 pub type InterpretResult<T> = Result<T, InterpretError>;
@@ -144,7 +132,8 @@ pub fn interpret(prog: TypedProgram, print_func: &mut dyn FnMut(String)) -> Inte
     let mut env = InterpretEnv::new(print_func);
 
     for f in prog.functions.into_iter() {
-        env.functions.insert(f.name.clone(), f);
+        env.functions
+            .insert(f.name.clone(), InterpretFunction::Defined(f));
     }
 
     for s in prog.main_function.statements.into_iter() {
@@ -377,72 +366,49 @@ fn call_function(
 ) -> InterpretResult<Value> {
     env.new_scope();
 
-    let func = env
-        .functions
-        .get(name)
-        .ok_or(InterpretError::NoSuchFunction(name.clone()))?
-        .clone();
+    let func = env.get_func(name)?;
 
-    for (i, arg) in func.arguments.iter().enumerate() {
-        let a = args.get(i).ok_or(InterpretError::InvalidFunctionArgCount(
-            func.arguments.len(),
-            args.len(),
-        ))?;
-        let val = eval_expression(a, env)?;
-        println!("Evaluated argument {} to {}", arg.name.clone(), val);
-        env.insert_var(arg.name.clone(), val)?;
-    }
+    match func {
+        InterpretFunction::Builtin => {
+            // Evaluate args
+            let arg_vals = args
+                .iter()
+                .map(|a| eval_expression(a, env))
+                .collect::<InterpretResult<Vec<Value>>>()?;
 
-    env.new_func()?;
-    match name.as_str() {
-        "print_number" => {
-            let number = Identifier::from("number");
-            let arg_val = env
-                .lookup_var(&number)
-                .ok_or(InterpretError::NoSuchVar(number))?;
-            match arg_val {
-                Value::Integer(a) => {
-                    (env.print)(format!("{}", a));
-                }
-                val => return Err(InterpretError::ValTypeError(Type::Integer, val)),
-            }
+            // Setup the new function scope
+            env.new_func()?;
+
+            let val = execute_builtin(name, arg_vals, env.print)?;
             env.func_return()?;
-            Ok(Value::Void)
+
+            Ok(val)
         }
-        "print_string" => {
-            let str = Identifier::from("str");
-            let arg_val = env.lookup_var(&str).ok_or(InterpretError::NoSuchVar(str))?;
-            match arg_val {
-                Value::String(s) => {
-                    (env.print)(format!("{}", s));
-                }
-                val => return Err(InterpretError::ValTypeError(Type::String, val)),
+        InterpretFunction::Defined(f) => {
+            // Evaluate args
+            for (i, arg) in f.arguments.iter().enumerate() {
+                let a = args.get(i).ok_or(InterpretError::InvalidFunctionArgCount(
+                    f.arguments.len(),
+                    args.len(),
+                ))?;
+                let val = eval_expression(a, env)?;
+                println!("Evaluated argument {} to {}", arg.name.clone(), val);
+                env.insert_var(arg.name.clone(), val)?;
             }
-            env.func_return()?;
-            Ok(Value::Void)
-        }
-        "print_bool" => {
-            let b_id = Identifier::from("b");
-            let arg_val = env
-                .lookup_var(&b_id)
-                .ok_or(InterpretError::NoSuchVar(b_id))?;
-            match arg_val {
-                Value::Boolean(b) => {
-                    (env.print)(format!("{}", b));
-                }
-                val => return Err(InterpretError::ValTypeError(Type::Boolean, val)),
-            }
-            env.func_return()?;
-            Ok(Value::Void)
-        }
-        _ => {
-            for stmt in func.statements.iter() {
+
+            // Setup the new function scope
+            env.new_func()?;
+
+            // Execute the function
+            for stmt in f.statements.iter() {
                 if let Some(val) = eval_statement(stmt, env)? {
                     env.func_return()?;
                     return Ok(val);
                 }
             }
             env.func_return()?;
+
+            // If nothing has been returned, return void
             Ok(Value::Void)
         }
     }
