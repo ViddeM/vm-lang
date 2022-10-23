@@ -1,0 +1,10 @@
+fn main() {
+    let a_bool = read_bool();
+    print_bool(!a_bool);
+
+    let a_string = read_string();
+    print_string(a_string);
+
+    let a_number = read_number();
+    print_number(a_number * 2);
+}

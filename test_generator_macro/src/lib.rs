@@ -10,6 +10,7 @@ const TEST_PATH_PREFIX: &str = "vm_lang/";
 
 const GR_FILE_TYPE: &str = "gr";
 const EXPECTED_FILE_TYPE: &str = "expected";
+const INPUT_FILE_TYPE: &str = "input";
 
 #[proc_macro]
 pub fn generate_tests(arg: TokenStream) -> TokenStream {
@@ -26,10 +27,12 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
             .expect("Missing program name")
             .strip_suffix(format!(".{}", GR_FILE_TYPE).as_str())
             .expect("Missing suffix");
+
         let name = Ident::new(&format!("test_prog_{}", prog_name), Span::call_site());
 
         let prog_path = &prog.path;
         let prog_expected = &prog.expected;
+        let prog_input = prog.input.unwrap_or(String::new());
 
         funcs = quote! {
             #funcs
@@ -40,7 +43,12 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
 
                 let prog_path = String::from(#prog_path);
                 let prog_expected = String::from(#prog_expected);
-                match run_tests(prog_path, prog_expected) {
+                let mut prog_input = String::from(#prog_input)
+                                    .split("\n")
+                                    .map(|a| String::from(a))
+                                    .collect::<Vec<String>>();
+                prog_input.reverse();
+                match run_tests(prog_path, prog_expected, &mut prog_input) {
                     Ok(()) => {},
                     Err(e) => panic!("Failure, {}", e),
                 }
@@ -88,12 +96,12 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
                         "interpret" => match self.program_error {
                             ProgramError::InterpretError(_) => Ok(()),
                             _ => Err(format!(
-                                "Invalid error, expected interpration {:?}",
+                                "Invalid error, expected interpretation {:?}",
                                 self.program_error
                             )),
                         },
                         s => Err(format!(
-                            "Expected output {}, got error {:?}",
+                            "Expected output:\n{}\ngot error:\n{:?}",
                             s, self.program_error
                         )),
                     }
@@ -106,11 +114,12 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
                 }
             }
 
-            fn run_tests(prog_path: String, prog_expected: String) -> Result<(), String> {
+            fn run_tests(prog_path: String, prog_expected: String, input: &mut Vec<String>) -> Result<(), String> {
                 let mut output = String::new();
                 match vm_lang::run_program(
                     &prog_path,
                     &mut |p| output.push_str(&format!("{}\n", p)),
+                    &mut || return input.pop().expect("Not enough input data!"),
                 ) {
                     Ok(()) => {
                         let got = output
@@ -118,12 +127,12 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
                             .ok_or(String::from("Failed to strip newline"))?;
 
                         if got != prog_expected {
-                            panic!("\nExpected\n{}\n\nGot\n{}\n", prog_expected, got);
+                            panic!("\nGot\n{}\n\nExpected\n{}\n", got, prog_expected);
                         }
                     }
                     Err(e) => {
                         if let Err(e) = TestError::from(e).check_against_string(&prog_expected) {
-                            panic!("\nExpected error {}\nGot {}\n", prog_expected, e);
+                            panic!("\nGot error\n{}\n\nExpected\n{}\n", e, prog_expected);
                         }
                     }
                 }
@@ -140,6 +149,7 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
 struct TestProgram {
     path: String,
     expected: String,
+    input: Option<String>,
 }
 
 fn get_tests(tests_path: String) -> Vec<TestProgram> {
@@ -175,12 +185,21 @@ fn get_tests(tests_path: String) -> Vec<TestProgram> {
         .filter(|(_, _, t)| t == GR_FILE_TYPE)
         .map(|(full_name, name, _)| {
             let expected_path = format!("{}.{}", name, EXPECTED_FILE_TYPE);
+            let input_path = format!("{}.{}", name, INPUT_FILE_TYPE);
+
+            let input = if std::path::Path::new(&input_path).exists() {
+                Some(fs::read_to_string(input_path)?)
+            } else {
+                None
+            };
+
             Ok(TestProgram {
                 path: full_name
                     .strip_prefix(TEST_PATH_PREFIX)
                     .expect("Missing test path prefix")
                     .to_string(),
                 expected: fs::read_to_string(expected_path)?,
+                input: input,
             })
         })
         .collect::<io::Result<Vec<TestProgram>>>()

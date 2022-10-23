@@ -54,6 +54,7 @@ pub fn execute_builtin<'a>(
     name: &Identifier,
     args: Vec<Value>,
     print_func: &'a mut dyn FnMut(String),
+    read_func: &'a mut dyn FnMut() -> String,
 ) -> BuiltinResult<Value> {
     match name.as_str() {
         "print_number" => {
@@ -78,18 +79,19 @@ pub fn execute_builtin<'a>(
             }
         }
         "read_number" => {
-            let inp = read_input()?;
+            let inp = read_func();
             return Ok(Value::Integer(
                 inp.parse()
                     .or_else(|e| Err(BuiltinError::Unknown(format!("{}", e))))?,
             ));
         }
         "read_string" => {
-            let inp = read_input()?;
+            let inp = read_func();
             return Ok(Value::String(inp));
         }
         "read_bool" => {
-            let inp = read_input()?;
+            let inp = read_func();
+            println!("Boolean to parse: '{}'", inp);
             return Ok(Value::Boolean(
                 inp.parse()
                     .or_else(|e| Err(BuiltinError::Unknown(format!("{}", e))))?,
@@ -98,13 +100,4 @@ pub fn execute_builtin<'a>(
         _ => return Err(BuiltinError::NoSuchBuiltin(name.clone())),
     }
     Ok(Value::Void)
-}
-
-fn read_input() -> BuiltinResult<String> {
-    let mut inp = String::new();
-    io::stdin().read_line(&mut inp)?;
-    Ok(match inp.strip_suffix("\n") {
-        Some(s) => String::from(s),
-        None => inp,
-    })
 }
