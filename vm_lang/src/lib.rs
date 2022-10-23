@@ -1,14 +1,15 @@
 use std::fs;
 
-mod core_types;
 mod interpreter;
 mod type_checker;
-mod typed_types;
 
 use crate::interpreter::InterpretError;
 use crate::type_checker::TypeCheckError;
 use crate::ProgramError::LalrpopError;
 use lalrpop_util::lalrpop_mod;
+
+pub mod gr_std_lib;
+pub mod types;
 
 lalrpop_mod!(pub core);
 

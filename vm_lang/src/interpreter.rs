@@ -1,7 +1,8 @@
-use crate::core_types::{
-    Argument, BooleanComparisonOperator, ComparisonOperator, Identifier, Type, UnaryOperator,
+use crate::gr_std_lib::builtins::default_function_definitions;
+use crate::types::core_types::{
+    BooleanComparisonOperator, ComparisonOperator, Identifier, Type, UnaryOperator,
 };
-use crate::typed_types::{TypedExpression, TypedFunction, TypedProgram, TypedStatement};
+use crate::types::typed_types::{TypedExpression, TypedFunction, TypedProgram, TypedStatement};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
@@ -33,59 +34,27 @@ type FunctionEnv = Vec<HashMap<Identifier, Value>>;
 pub struct InterpretEnv<'a> {
     call_stack: Vec<FunctionEnv>,
     vars: FunctionEnv,
-    functions: HashMap<Identifier, TypedFunction>,
+    functions: HashMap<Identifier, InterpretFunction>,
     print: &'a mut dyn FnMut(String),
+}
+
+pub enum InterpretFunction {
+    Builtin,
+    Defined(TypedFunction),
 }
 
 impl<'a> InterpretEnv<'a> {
     fn new(print_func: &'a mut dyn FnMut(String)) -> Self {
-        let mut default_functions = HashMap::new();
-        let print_number = Identifier::from("print_number");
-        default_functions.insert(
-            print_number.clone(),
-            TypedFunction {
-                name: print_number.clone(),
-                arguments: vec![Argument {
-                    name: Identifier::from("number"),
-                    t: Type::Integer,
-                }],
-                statements: vec![],
-                return_type: Type::Void,
-            },
-        );
-
-        let print_string = Identifier::from("print_string");
-        default_functions.insert(
-            print_string.clone(),
-            TypedFunction {
-                name: print_string.clone(),
-                arguments: vec![Argument {
-                    name: Identifier::from("str"),
-                    t: Type::String,
-                }],
-                statements: vec![],
-                return_type: Type::Void,
-            },
-        );
-
-        let print_bool = Identifier::from("print_bool");
-        default_functions.insert(
-            print_bool.clone(),
-            TypedFunction {
-                name: print_bool.clone(),
-                arguments: vec![Argument {
-                    name: Identifier::from("b"),
-                    t: Type::Boolean,
-                }],
-                statements: vec![],
-                return_type: Type::Void,
-            },
+        let functions = HashMap::from_iter(
+            default_function_definitions()
+                .into_iter()
+                .map(|name| (Identifier::from(name), InterpretFunction::Builtin)),
         );
 
         Self {
             call_stack: vec![],
             vars: vec![HashMap::new()],
-            functions: default_functions,
+            functions: functions,
             print: print_func,
         }
     }

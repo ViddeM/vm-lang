@@ -1,4 +1,4 @@
-use crate::core_types::{Program, Statement, Identifier, Expression, ComparisonOperator, BooleanComparisonOperator, Type, Argument, Function, UnaryOperator};
+use crate::types::core_types::{Program, Statement, Identifier, Expression, ComparisonOperator, BooleanComparisonOperator, Type, Argument, Function, UnaryOperator};
 
 grammar;
 

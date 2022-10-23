@@ -1,4 +1,4 @@
-use crate::core_types::{
+use crate::types::core_types::{
     Argument, BooleanComparisonOperator, ComparisonOperator, Identifier, Type, UnaryOperator,
 };
 use std::fmt::{Display, Formatter};
