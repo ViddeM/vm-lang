@@ -1,7 +1,8 @@
-use crate::core_types::{
+use crate::gr_std_lib::builtins::default_function_definitions_typechecker;
+use crate::types::core_types::{
     BooleanComparisonOperator, Expression, Function, Identifier, Program, Statement, Type,
 };
-use crate::typed_types::{TypedExpression, TypedFunction, TypedProgram, TypedStatement};
+use crate::types::typed_types::{TypedExpression, TypedFunction, TypedProgram, TypedStatement};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
@@ -60,24 +61,10 @@ pub struct TypeCheckEnv {
 
 impl TypeCheckEnv {
     fn new() -> Self {
-        let mut default_functions = HashMap::new();
-        default_functions.insert(
-            Identifier::from("print_number"),
-            (vec![Type::Integer], Type::Void),
-        );
-        default_functions.insert(
-            Identifier::from("print_string"),
-            (vec![Type::String], Type::Void),
-        );
-        default_functions.insert(
-            Identifier::from("print_bool"),
-            (vec![Type::Boolean], Type::Void),
-        );
-
         TypeCheckEnv {
             call_stack: vec![],
             vars: vec![HashMap::new()],
-            functions: default_functions,
+            functions: default_function_definitions_typechecker(),
             stack_trace: StackTrace::new(),
         }
     }
