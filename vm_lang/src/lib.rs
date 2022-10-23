@@ -37,7 +37,11 @@ impl From<InterpretError> for ProgramError {
     }
 }
 
-pub fn run_program(path: &str, print_func: &mut dyn FnMut(String)) -> Result<(), ProgramError> {
+pub fn run_program(
+    path: &str,
+    print_func: &mut dyn FnMut(String),
+    get_input_func: &mut dyn FnMut() -> String,
+) -> Result<(), ProgramError> {
     let to_parse = fs::read_to_string(path).or(Err(ProgramError::FileRead(path.to_string())))?;
     let parsed = core::PrgrParser::new()
         .parse(&to_parse)
@@ -45,7 +49,7 @@ pub fn run_program(path: &str, print_func: &mut dyn FnMut(String)) -> Result<(),
 
     let type_checked = type_checker::type_check(parsed)?;
 
-    interpreter::interpret(type_checked, print_func)?;
+    interpreter::interpret(type_checked, print_func, get_input_func)?;
 
     Ok(())
 }

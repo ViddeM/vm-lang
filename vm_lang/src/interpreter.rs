@@ -13,6 +13,7 @@ pub struct InterpretEnv<'a> {
     vars: FunctionEnv,
     functions: HashMap<Identifier, InterpretFunction>,
     print: &'a mut dyn FnMut(String),
+    read: &'a mut dyn FnMut() -> String,
 }
 
 #[derive(Clone, Debug)]
@@ -22,7 +23,10 @@ pub enum InterpretFunction {
 }
 
 impl<'a> InterpretEnv<'a> {
-    fn new(print_func: &'a mut dyn FnMut(String)) -> Self {
+    fn new(
+        print_func: &'a mut dyn FnMut(String),
+        read_func: &'a mut dyn FnMut() -> String,
+    ) -> Self {
         let functions = HashMap::from_iter(
             default_function_definitions()
                 .into_iter()
@@ -34,6 +38,7 @@ impl<'a> InterpretEnv<'a> {
             vars: vec![HashMap::new()],
             functions: functions,
             print: print_func,
+            read: read_func,
         }
     }
 
@@ -128,8 +133,12 @@ pub enum InterpretError {
 
 pub type InterpretResult<T> = Result<T, InterpretError>;
 
-pub fn interpret(prog: TypedProgram, print_func: &mut dyn FnMut(String)) -> InterpretResult<()> {
-    let mut env = InterpretEnv::new(print_func);
+pub fn interpret(
+    prog: TypedProgram,
+    print_func: &mut dyn FnMut(String),
+    read_func: &mut dyn FnMut() -> String,
+) -> InterpretResult<()> {
+    let mut env = InterpretEnv::new(print_func, read_func);
 
     for f in prog.functions.into_iter() {
         env.functions
@@ -379,7 +388,7 @@ fn call_function(
             // Setup the new function scope
             env.new_func()?;
 
-            let val = execute_builtin(name, arg_vals, env.print)?;
+            let val = execute_builtin(name, arg_vals, env.print, env.read)?;
             env.func_return()?;
 
             Ok(val)
