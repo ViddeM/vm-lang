@@ -20,6 +20,18 @@ fn main() {
 
     print_number(subtract_stuff(a, b, false));
     // print_number(subtract_stuff(a, b, true));
+
+    print_string("Write number");
+    let input_num = read_number();
+    print_number(input_num + 2);
+
+    print_string("Write bool");
+    let input_bool = read_bool();
+    print_bool(!input_bool);
+
+    print_string("Write string");
+    let input_string = read_string();
+    print_string(input_string);
 }
 
 fn add_stuff(c: int, d: int): int {
