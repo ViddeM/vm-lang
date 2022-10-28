@@ -80,10 +80,12 @@ pub fn execute_builtin<'a>(
         }
         "read_number" => {
             let inp = read_func();
-            return Ok(Value::Integer(
-                inp.parse()
-                    .or_else(|e| Err(BuiltinError::Unknown(format!("{}", e))))?,
-            ));
+            return Ok(Value::Integer(inp.parse().or_else(|e| {
+                Err(BuiltinError::Unknown(format!(
+                    "Failed to parse '{}' as integer, err: {}",
+                    inp, e
+                )))
+            })?));
         }
         "read_string" => {
             let inp = read_func();
@@ -91,11 +93,12 @@ pub fn execute_builtin<'a>(
         }
         "read_bool" => {
             let inp = read_func();
-            println!("Boolean to parse: '{}'", inp);
-            return Ok(Value::Boolean(
-                inp.parse()
-                    .or_else(|e| Err(BuiltinError::Unknown(format!("{}", e))))?,
-            ));
+            return Ok(Value::Boolean(inp.parse().or_else(|e| {
+                Err(BuiltinError::Unknown(format!(
+                    "Failed to parse '{}' as boolean, err: {}",
+                    inp, e
+                )))
+            })?));
         }
         _ => return Err(BuiltinError::NoSuchBuiltin(name.clone())),
     }
