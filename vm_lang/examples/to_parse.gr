@@ -1,41 +1,10 @@
-fn subtract_stuff(a: int, b: int, c: bool): int {
-    while a <= b {
-        a = a + 1;
-        print_number(a);
-        print_number(b);
-    }
-
-    if b - a < 0 {
-        return -69;
-    } else {
-        return 69;
-    }
-}
-
 fn main() {
-    let a = 0;
-    let b = 2;
-    print_number(add_stuff(a, b));
-    print_number(b);
-
-    print_number(subtract_stuff(a, b, false));
-    // print_number(subtract_stuff(a, b, true));
-
-    print_string("Write number");
-    let input_num = read_number();
-    print_number(input_num + 2);
-
-    print_string("Write bool");
-    let input_bool = read_bool();
-    print_bool(!input_bool);
-
-    print_string("Write string");
-    let input_string = read_string();
-    print_string(input_string);
+    let a = get_me_that_file();
+    print_string("Olla olla! Here is that coolest of files");
+    print_string(a);
 }
 
-fn add_stuff(c: int, d: int): int {
-    print_string("Function add_stuff");
-    print_bool(true);
-    return c + d + 1;
+fn get_me_that_file(): String {
+    return read_file("./input.txt");
 }
+

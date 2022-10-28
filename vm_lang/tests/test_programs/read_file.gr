@@ -1,0 +1,5 @@
+fn main() {
+    let file_content = read_file("tests/test_program_files/read_file.txt");
+    print_string("Here is some file content:");
+    print_string(file_content);
+}
