@@ -6,7 +6,11 @@ use syn::{parse_macro_input, LitStr};
 
 extern crate proc_macro;
 
-const TEST_PATH_PREFIX: &str = "vm_lang/";
+const TEST_READ_BASE_PATH: &str = "vm_lang";
+
+const INPUT_FILES_DIRECTORY: &str = "test_program_inputs";
+const TEST_PROGRAMS_DIRECTORY: &str = "test_programs";
+const EXPECTED_FILES_DIRECTORY: &str = "test_programs_expected";
 
 const GR_FILE_TYPE: &str = "gr";
 const EXPECTED_FILE_TYPE: &str = "expected";
@@ -15,20 +19,12 @@ const INPUT_FILE_TYPE: &str = "input";
 #[proc_macro]
 pub fn generate_tests(arg: TokenStream) -> TokenStream {
     let tests_path = parse_macro_input!(arg as LitStr).value();
-    let test_progs = get_tests(format!("{}{}", TEST_PATH_PREFIX, tests_path));
+    let test_progs = get_tests(tests_path);
 
     let mut funcs = quote! {};
 
     for prog in test_progs.into_iter() {
-        let prog_name = prog
-            .path
-            .split("/")
-            .last()
-            .expect("Missing program name")
-            .strip_suffix(format!(".{}", GR_FILE_TYPE).as_str())
-            .expect("Missing suffix");
-
-        let name = Ident::new(&format!("test_prog_{}", prog_name), Span::call_site());
+        let name = Ident::new(&format!("test_prog_{}", prog.name), Span::call_site());
 
         let prog_path = &prog.path;
         let prog_expected = &prog.expected;
@@ -101,7 +97,7 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
                             )),
                         },
                         s => Err(format!(
-                            "Expected output:\n{}\ngot error:\n{:?}",
+                            "Expected output:\n{}\n\nGot error:\n{:?}",
                             s, self.program_error
                         )),
                     }
@@ -132,7 +128,7 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
                     }
                     Err(e) => {
                         if let Err(e) = TestError::from(e).check_against_string(&prog_expected) {
-                            panic!("\nGot error\n{}\n\nExpected\n{}\n", e, prog_expected);
+                            panic!("{}", e);
                         }
                     }
                 }
@@ -146,14 +142,11 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
     TokenStream::from(test_module)
 }
 
-struct TestProgram {
-    path: String,
-    expected: String,
-    input: Option<String>,
-}
+fn get_tests(internal_test_path: String) -> Vec<TestProgram> {
+    let full_test_path = format!("{}/{}", TEST_READ_BASE_PATH, internal_test_path);
 
-fn get_tests(tests_path: String) -> Vec<TestProgram> {
-    let test_path = Path::new(&tests_path);
+    let full_test_programs_path_name = format!("{}/{}", full_test_path, TEST_PROGRAMS_DIRECTORY);
+    let test_path = Path::new(&full_test_programs_path_name);
     fs::read_dir(test_path)
         .expect("Failed to read directory test_programs")
         .map(|p| {
@@ -165,43 +158,64 @@ fn get_tests(tests_path: String) -> Vec<TestProgram> {
                 .to_string();
 
             let split_src = file_name.clone();
-            let path = p.path();
-            let base_path = path
-                .to_str()
-                .expect("Failed to convert base path to string")
-                .strip_suffix(&split_src)
-                .expect("Failed to create base path");
             let split = split_src.split(".").collect::<Vec<&str>>();
             (
-                format!("{}{}", base_path, file_name),
-                format!(
-                    "{}/{}",
-                    base_path,
-                    split.get(0).expect("Filename err").to_string()
-                ),
-                split.get(1).expect("Filetype err").to_string(),
+                file_name,
+                split.get(0).expect("Filename err").to_string(), // Get filename without type ending
+                split.get(1).expect("Filetype err").to_string(), // Get filetype
             )
         })
         .filter(|(_, _, t)| t == GR_FILE_TYPE)
-        .map(|(full_name, name, _)| {
-            let expected_path = format!("{}.{}", name, EXPECTED_FILE_TYPE);
-            let input_path = format!("{}.{}", name, INPUT_FILE_TYPE);
-
-            let input = if std::path::Path::new(&input_path).exists() {
-                Some(fs::read_to_string(input_path)?)
-            } else {
-                None
-            };
-
-            Ok(TestProgram {
-                path: full_name
-                    .strip_prefix(TEST_PATH_PREFIX)
-                    .expect("Missing test path prefix")
-                    .to_string(),
-                expected: fs::read_to_string(expected_path)?,
-                input: input,
-            })
+        .map(|(full_file_name, file_name, _)| {
+            TestProgram::new(
+                file_name,
+                full_file_name,
+                &internal_test_path,
+                &full_test_path,
+            )
         })
         .collect::<io::Result<Vec<TestProgram>>>()
         .expect("Failed to read test files")
+}
+
+struct TestProgram {
+    name: String,
+    path: String,
+    expected: String,
+    input: Option<String>,
+}
+
+impl TestProgram {
+    fn new<'a>(
+        file_name: String,
+        full_file_name: String,
+        internal_test_path: &'a str,
+        full_test_path: &'a str,
+    ) -> io::Result<Self> {
+        let program_path = format!(
+            "{}/{}/{}",
+            internal_test_path, TEST_PROGRAMS_DIRECTORY, full_file_name
+        );
+        let expected_path = format!(
+            "{}/{}/{}.{}",
+            full_test_path, EXPECTED_FILES_DIRECTORY, file_name, EXPECTED_FILE_TYPE
+        );
+        let input_path = format!(
+            "{}/{}/{}.{}",
+            full_test_path, INPUT_FILES_DIRECTORY, file_name, INPUT_FILE_TYPE
+        );
+
+        let input = if std::path::Path::new(&input_path).exists() {
+            Some(fs::read_to_string(input_path)?)
+        } else {
+            None
+        };
+
+        Ok(TestProgram {
+            name: file_name,
+            path: program_path,
+            expected: fs::read_to_string(expected_path)?,
+            input: input,
+        })
+    }
 }
