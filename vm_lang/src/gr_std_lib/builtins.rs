@@ -7,8 +7,10 @@ use crate::types::{
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuiltinError {
-    #[error("Received invalid arguments to builtin function (should probably have been handled by typechecker?)")]
-    InvalidArgs,
+    #[error("Received an argument of invalid type to builtin function (should probably have been handled by typechecker?)")]
+    InvalidArgType,
+    #[error("Received the wrong number of arguments to builtin function (should probably have been handled by typechecker?)")]
+    InvalidArgsCount,
     #[error("No builtin function with name `{0}` exists")]
     NoSuchBuiltin(Identifier),
     #[error("An IO error occured whilst executing builtin function, err: `{0}`")]
@@ -27,6 +29,7 @@ pub fn default_function_definitions() -> Vec<&'static str> {
         "read_number",
         "read_string",
         "read_bool",
+        "read_file",
     ]
 }
 
@@ -47,6 +50,10 @@ pub fn default_function_definitions_typechecker() -> HashMap<String, (Vec<Type>,
     default_functions.insert(Identifier::from("read_number"), (vec![], Type::Integer));
     default_functions.insert(Identifier::from("read_string"), (vec![], Type::String));
     default_functions.insert(Identifier::from("read_bool"), (vec![], Type::Boolean));
+    default_functions.insert(
+        Identifier::from("read_file"),
+        (vec![Type::String], Type::String),
+    );
     default_functions
 }
 
@@ -56,27 +63,19 @@ pub fn execute_builtin<'a>(
     print_func: &'a mut dyn FnMut(String),
     read_func: &'a mut dyn FnMut() -> String,
 ) -> BuiltinResult<Value> {
+    let mut args = args;
     match name.as_str() {
         "print_number" => {
-            let arg_val = args.first().ok_or(BuiltinError::InvalidArgs)?;
-            match arg_val {
-                Value::Integer(a) => (print_func)(format!("{}", a)),
-                _ => Err(BuiltinError::InvalidArgs)?,
-            }
+            let i = get_int_arg(&mut args)?;
+            (print_func)(format!("{}", i));
         }
         "print_string" => {
-            let arg_val = args.first().ok_or(BuiltinError::InvalidArgs)?;
-            match arg_val {
-                Value::String(a) => (print_func)(format!("{}", a)),
-                _ => Err(BuiltinError::InvalidArgs)?,
-            }
+            let s = get_string_arg(&mut args)?;
+            (print_func)(format!("{}", s));
         }
         "print_bool" => {
-            let arg_val = args.first().ok_or(BuiltinError::InvalidArgs)?;
-            match arg_val {
-                Value::Boolean(a) => (print_func)(format!("{}", a)),
-                _ => Err(BuiltinError::InvalidArgs)?,
-            }
+            let b = get_bool_arg(&mut args)?;
+            (print_func)(format!("{}", b));
         }
         "read_number" => {
             let inp = read_func();
@@ -100,7 +99,32 @@ pub fn execute_builtin<'a>(
                 )))
             })?));
         }
+        "read_file" => {}
         _ => return Err(BuiltinError::NoSuchBuiltin(name.clone())),
     }
     Ok(Value::Void)
+}
+
+fn get_string_arg(args: &mut Vec<Value>) -> BuiltinResult<String> {
+    let val = args.pop().ok_or(BuiltinError::InvalidArgsCount)?;
+    match val {
+        Value::String(s) => Ok(s),
+        _ => Err(BuiltinError::InvalidArgType),
+    }
+}
+
+fn get_bool_arg(args: &mut Vec<Value>) -> BuiltinResult<bool> {
+    let val = args.pop().ok_or(BuiltinError::InvalidArgsCount)?;
+    match val {
+        Value::Boolean(b) => Ok(b),
+        _ => Err(BuiltinError::InvalidArgType),
+    }
+}
+
+fn get_int_arg(args: &mut Vec<Value>) -> BuiltinResult<i64> {
+    let val = args.pop().ok_or(BuiltinError::InvalidArgsCount)?;
+    match val {
+        Value::Integer(i) => Ok(i),
+        _ => Err(BuiltinError::InvalidArgType),
+    }
 }
