@@ -169,6 +169,8 @@ pub enum TypeCheckError {
     ListTypesDiffer,
     #[error("Unable to infer list type, please specify")]
     InferListType,
+    #[error("Cannot iterate over non-list type `{0}`")]
+    IterNonList(Type),
     #[error("Cannot return type `{0}` from function `{1}` of type `{2}`")]
     InvalidReturnType(Type, Identifier, Type),
     #[error("Branches have different return types `{0}` and `{1}`")]
@@ -327,6 +329,23 @@ fn type_check_stmt(
             env.stack_trace.pop();
             env.pop_scope();
             return Ok((TypedStatement::While(expr_typed, Box::new(typed_stmt)), t));
+        }
+        Statement::For(id, expr, stmt) => {
+            env.new_scope();
+            let expr_typed = type_check_expr(expr, env)?;
+            env.stack_trace.pop();
+            let iter_type = match expr_typed.get_type() {
+                Type::List(a) => *a,
+                other => return Err(TypeCheckError::IterNonList(other)),
+            };
+            env.insert_var(id.clone(), iter_type)?;
+            let (typed_stmt, t) = type_check_stmt(stmt, env)?;
+            env.stack_trace.pop();
+            env.pop_scope();
+            return Ok((
+                TypedStatement::For(id.clone(), expr_typed, Box::new(typed_stmt)),
+                t,
+            ));
         }
         Statement::If(expr, stmt) => {
             env.new_scope();

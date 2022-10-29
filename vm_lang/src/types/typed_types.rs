@@ -37,6 +37,7 @@ pub enum TypedStatement {
     IfElse(TypedExpression, Box<TypedStatement>, Box<TypedStatement>),
     Return(Option<TypedExpression>),
     While(TypedExpression, Box<TypedStatement>),
+    For(Identifier, TypedExpression, Box<TypedStatement>),
     Block(Vec<TypedStatement>),
 }
 
@@ -58,7 +59,7 @@ impl Display for TypedStatement {
                     }
                 ),
                 TypedStatement::While(a, _) => format!("while {}", a),
-
+                TypedStatement::For(i, a, _) => format!("for ({} in {})", i, a),
                 TypedStatement::Block(_) => format!("block"),
             }
         )

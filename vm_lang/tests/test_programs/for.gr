@@ -1,9 +1,6 @@
 fn main() {
-    let a = [1, 2, 3, 4];
-
+    let a = [42, 420];
     for (b in a) {
         print_number(b);
     }
 }
-
-

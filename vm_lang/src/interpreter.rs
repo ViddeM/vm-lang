@@ -119,6 +119,8 @@ pub enum InterpretError {
         "Value type error (should've been handled by typechecker!), expected `{0}`, got `{1}`"
     )]
     ValTypeError(Type, Value),
+    #[error("Expected value of type list, got `{0}`")]
+    ListTypeError(Value),
     #[error("No such function `{0}`")]
     NoSuchFunction(Identifier),
     #[error("Invalid amount of function arguments, expected `{0}`, got `{1}`")]
@@ -175,6 +177,7 @@ fn eval_statement(stmt: &TypedStatement, env: &mut InterpretEnv) -> InterpretRes
                 match eval_expression(&expr, env)? {
                     Value::Boolean(true) => {
                         if let Some(s) = eval_statement(stmt, env)? {
+                            env.pop_scope();
                             return Ok(Some(s));
                         }
                     }
@@ -186,6 +189,27 @@ fn eval_statement(stmt: &TypedStatement, env: &mut InterpretEnv) -> InterpretRes
                 };
                 env.pop_scope();
             }
+            None
+        }
+        TypedStatement::For(id, expr, stmt) => {
+            env.new_scope();
+            let list = eval_expression(expr, env)?;
+            match list {
+                Value::List(list) => {
+                    for elem in list.iter() {
+                        env.new_scope();
+                        env.insert_var(id.clone(), elem.clone())?;
+                        if let Some(s) = eval_statement(stmt, env)? {
+                            env.pop_scope();
+                            env.pop_scope();
+                            return Ok(Some(s));
+                        }
+                        env.pop_scope();
+                    }
+                }
+                other => return Err(InterpretError::ListTypeError(other)),
+            }
+            env.pop_scope();
             None
         }
         TypedStatement::If(expr, stmt) => {

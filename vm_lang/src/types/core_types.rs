@@ -41,6 +41,7 @@ impl Display for Argument {
 pub enum Statement {
     Let(Identifier, Expression),
     While(Expression, Box<Statement>),
+    For(Identifier, Expression, Box<Statement>),
     If(Expression, Box<Statement>),
     IfElse(Expression, Box<Statement>, Box<Statement>),
     Return(Option<Expression>),
@@ -66,6 +67,7 @@ impl Display for Statement {
                     }
                 ),
                 Statement::While(a, _) => format!("while {}", a),
+                Statement::For(id, expr, _) => format!("for ({} in {})", id, expr),
                 Statement::Block(_) => format!("block"),
             }
         )
