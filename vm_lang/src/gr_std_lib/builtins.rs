@@ -100,21 +100,6 @@ pub fn execute_builtin<'a>(
             })?));
         }
         "read_file" => {
-            let a = fs::read_dir("./").expect("FECK");
-            let c = a
-                .into_iter()
-                .map(|b| {
-                    String::from(
-                        b.expect("DAMN")
-                            .file_name()
-                            .to_str()
-                            .expect("Failed to make os str to str"),
-                    )
-                })
-                .collect::<Vec<String>>()
-                .join("\n");
-            println!("Got request to read file, this is the current path: {}", c);
-
             let inp = get_string_arg(&mut args)?;
             let file = fs::read_to_string(&inp)?;
             return Ok(Value::String(file));
