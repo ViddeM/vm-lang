@@ -107,10 +107,10 @@ impl Display for Expression {
                 Expression::FunctionCall(name, args) => format!(
                     "{} ({})",
                     name,
-                    args.iter().fold(String::new(), |mut acc, i| {
-                        acc.push_str(&format!("{}, ", i.to_string()));
-                        acc
-                    })
+                    args.iter()
+                        .map(|e| e.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ")
                 ),
                 Expression::Variable(a) => format!("var {}", a),
                 Expression::Comparison(a, b, comp) => format!("{} {} {}", a, comp, b),
