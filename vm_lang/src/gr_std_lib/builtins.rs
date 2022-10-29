@@ -30,6 +30,7 @@ pub fn default_function_definitions() -> Vec<&'static str> {
         "read_string",
         "read_bool",
         "read_file",
+        "split_string",
     ]
 }
 
@@ -54,6 +55,13 @@ pub fn default_function_definitions_typechecker() -> HashMap<String, (Vec<Type>,
         Identifier::from("read_file"),
         (vec![Type::String], Type::String),
     );
+    default_functions.insert(
+        Identifier::from("split_string"),
+        (
+            vec![Type::String, Type::String],
+            Type::List(Box::new(Type::String)),
+        ),
+    );
     default_functions
 }
 
@@ -64,6 +72,7 @@ pub fn execute_builtin<'a>(
     read_func: &'a mut dyn FnMut() -> String,
 ) -> BuiltinResult<Value> {
     let mut args = args;
+    args.reverse();
     match name.as_str() {
         "print_number" => {
             let i = get_int_arg(&mut args)?;
@@ -103,6 +112,19 @@ pub fn execute_builtin<'a>(
             let inp = get_string_arg(&mut args)?;
             let file = fs::read_to_string(&inp)?;
             return Ok(Value::String(file));
+        }
+        "split_string" => {
+            let str = get_string_arg(&mut args)?;
+            let split_on = get_string_arg(&mut args)?;
+            println!("Split on '{}'", split_on);
+            return Ok(Value::List(
+                str.split(&split_on)
+                    .map(|s| {
+                        println!("Split part: {}", s);
+                        Value::String(s.to_string())
+                    })
+                    .collect::<Vec<Value>>(),
+            ));
         }
         _ => return Err(BuiltinError::NoSuchBuiltin(name.clone())),
     }

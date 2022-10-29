@@ -1,0 +1,8 @@
+fn main() {
+    let str = "A long cool string";
+    let split = split_string(str, " ");
+    let i = 0;
+    while (i < 4) {
+        print_string(split[i++]);
+    }
+}
