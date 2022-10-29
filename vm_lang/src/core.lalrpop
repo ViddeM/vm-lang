@@ -19,6 +19,8 @@ match {
     ")",
     "{",
     "}",
+    "[",
+    "]",
     "==",
     "!=",
     "<=",
@@ -126,6 +128,11 @@ PostUnaryOperators: Expression = {
 
 FunctionCall: Expression = {
     <name: Ident> "(" <args: Comma<Expr>> ")" => Expression::FunctionCall(String::from(name), args),
+    ListIndexing,
+}
+
+ListIndexing: Expression = {
+    <name: FunctionCall> "[" <index: Expr> "]" => Expression::ListIndex(Box::new(name), Box::new(index)),
     Literal,
 }
 
@@ -135,6 +142,8 @@ Literal: Expression = {
     <lit: Str> => Expression::StringLiteral(lit),
     <num: INTEGER> => Expression::IntegerLiteral(num.parse::<i64>().unwrap()),
     <var: Ident> => Expression::Variable(var),
+    "[" <vals: Comma<Expr>> "]" => Expression::ListLiteral(vals), 
+    <t: Type> "[" <vals: Comma<Expr>> "]" => Expression::TypedListLiteral(vals, t),
     "(" <expr: Expr> ")" => expr,
 }
 
@@ -169,4 +178,8 @@ Type: Type = {
     INT => Type::Integer,
     BOOL => Type::Boolean,
     STRING => Type::String,
+}
+
+ListType: Type = {
+    "[" <t: Type> "]" => Type::List(Box::new(t))
 }

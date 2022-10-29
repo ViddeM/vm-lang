@@ -1,10 +1,10 @@
 fn main() {
-    let a = get_me_that_file();
-    print_string("Olla olla! Here is that coolest of files");
-    print_string(a);
+    let a = [1, 2, 3, 4];
+
+    let i = 0;
+    while (i < 4) {
+        print_number(a[i++]);
+    }
 }
 
-fn get_me_that_file(): String {
-    return read_file("./input.txt");
-}
 

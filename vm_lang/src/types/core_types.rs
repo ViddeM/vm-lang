@@ -77,12 +77,15 @@ pub enum Expression {
     IntegerLiteral(i64),
     BooleanLiteral(bool),
     StringLiteral(String),
+    ListLiteral(Vec<Expression>),
+    TypedListLiteral(Vec<Expression>, Type),
     Variable(Identifier),
     Plus(Box<Expression>, Box<Expression>),
     Minus(Box<Expression>, Box<Expression>),
     Times(Box<Expression>, Box<Expression>),
     Divide(Box<Expression>, Box<Expression>),
     FunctionCall(Identifier, Vec<Expression>),
+    ListIndex(Box<Expression>, Box<Expression>),
     Comparison(Box<Expression>, Box<Expression>, ComparisonOperator),
     BooleanComparison(Box<Expression>, Box<Expression>, BooleanComparisonOperator),
     Assignment(Identifier, Box<Expression>),
@@ -100,6 +103,23 @@ impl Display for Expression {
                 Expression::IntegerLiteral(i) => i.to_string(),
                 Expression::BooleanLiteral(b) => b.to_string(),
                 Expression::StringLiteral(s) => s.to_string(),
+                Expression::ListLiteral(inner) => format!(
+                    "[{}]",
+                    inner
+                        .iter()
+                        .map(|v| v.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                ),
+                Expression::TypedListLiteral(inner, t) => format!(
+                    "{}[{}]",
+                    t,
+                    inner
+                        .iter()
+                        .map(|v| v.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                ),
                 Expression::Plus(a, b) => format!("{} + {}", a, b),
                 Expression::Minus(a, b) => format!("{} - {}", a, b),
                 Expression::Times(a, b) => format!("{} * {}", a, b),
@@ -112,6 +132,7 @@ impl Display for Expression {
                         .collect::<Vec<String>>()
                         .join(", ")
                 ),
+                Expression::ListIndex(list, index) => format!("{}[{}]", list, index),
                 Expression::Variable(a) => format!("var {}", a),
                 Expression::Comparison(a, b, comp) => format!("{} {} {}", a, comp, b),
                 Expression::BooleanComparison(a, b, comp) => format!("{} {} {}", a, comp, b),
@@ -132,6 +153,7 @@ pub enum Type {
     Boolean,
     String,
     Void,
+    List(Box<Type>),
 }
 
 impl Display for Type {
@@ -140,10 +162,11 @@ impl Display for Type {
             f,
             "{}",
             match self {
-                Type::Integer => "Integer",
-                Type::Boolean => "Boolean",
-                Type::Void => "Void",
-                Type::String => "String",
+                Type::Integer => "Integer".to_string(),
+                Type::Boolean => "Boolean".to_string(),
+                Type::Void => "Void".to_string(),
+                Type::String => "String".to_string(),
+                Type::List(a) => format!("List<{}>", a),
             }
         )
     }

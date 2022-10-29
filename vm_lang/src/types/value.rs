@@ -5,6 +5,7 @@ pub enum Value {
     Integer(i64),
     Boolean(bool),
     String(String),
+    List(Vec<Value>),
     Void,
 }
 
@@ -17,6 +18,14 @@ impl Display for Value {
                 Value::Integer(i) => format!("Integer({})", i),
                 Value::Boolean(b) => format!("Boolean({})", b),
                 Value::String(s) => format!("String({})", s),
+                Value::List(inner) => format!(
+                    "List({})",
+                    inner
+                        .into_iter()
+                        .map(|v| v.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                ),
                 Value::Void => String::from("Void"),
             }
         )

@@ -78,21 +78,21 @@ pub fn generate_tests(arg: TokenStream) -> TokenStream {
                         "parse" => match self.program_error {
                             ProgramError::LalrpopError(_) => Ok(()),
                             _ => Err(format!(
-                                "Invalid error, expected parse (lalrpop) {:?}",
+                                "Invalid error, expected parse (lalrpop), got: {:?}",
                                 self.program_error
                             )),
                         },
                         "typecheck" => match self.program_error {
                             ProgramError::TypeCheck(_) => Ok(()),
                             _ => Err(format!(
-                                "Invalid error, expected typecheck {:?}",
+                                "Invalid error, expected typecheck, got: {:?}",
                                 self.program_error
                             )),
                         },
                         "interpret" => match self.program_error {
                             ProgramError::InterpretError(_) => Ok(()),
                             _ => Err(format!(
-                                "Invalid error, expected interpretation {:?}",
+                                "Invalid error, expected interpretation, got: {:?}",
                                 self.program_error
                             )),
                         },

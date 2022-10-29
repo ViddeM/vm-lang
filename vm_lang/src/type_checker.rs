@@ -149,6 +149,10 @@ pub enum TypeCheckError {
     CmpTypeMismatch(Type, Type),
     #[error("Invalid type `{0}` for boolean operator `{1}`")]
     InvalidBoolCmpType(BooleanComparisonOperator, Type),
+    #[error("Can only index list types, got `{0}`")]
+    IndexNonList(Type),
+    #[error("List index must be of type number, got `{0}`")]
+    ListIndexNotNumber(Type),
     #[error("Cannot assign type `{0}` to variable `{1}` of type `{2}`")]
     AssignmentMismatch(Type, Identifier, Type),
     #[error("A function with name `{0}` already exists")]
@@ -161,6 +165,10 @@ pub enum TypeCheckError {
         "Function `{0}` does not end with a return statement which all non-void functions must"
     )]
     MissingReturn(Identifier),
+    #[error("Cannot have differing types in list!")]
+    ListTypesDiffer,
+    #[error("Unable to infer list type, please specify")]
+    InferListType,
     #[error("Cannot return type `{0}` from function `{1}` of type `{2}`")]
     InvalidReturnType(Type, Identifier, Type),
     #[error("Branches have different return types `{0}` and `{1}`")]
@@ -395,6 +403,14 @@ fn type_check_expr(expr: &Expression, env: &mut TypeCheckEnv) -> TypeCheckResult
         Expression::IntegerLiteral(n) => TypedExpression::IntegerLiteral(n.clone()),
         Expression::BooleanLiteral(b) => TypedExpression::BooleanLiteral(b.clone()),
         Expression::StringLiteral(s) => TypedExpression::StringLiteral(s.clone()),
+        Expression::ListLiteral(inner) => {
+            let (vals, t) = type_check_list_literal(inner, None, env)?;
+            TypedExpression::ListLiteral(vals, t)
+        }
+        Expression::TypedListLiteral(inner, declared_type) => {
+            let (vals, t) = type_check_list_literal(inner, Some(declared_type.clone()), env)?;
+            TypedExpression::ListLiteral(vals, t)
+        }
         Expression::Plus(a, b) => {
             let (a, b, t) = type_check_arith(a, b, env)?;
             TypedExpression::Plus(a, b, t)
@@ -420,6 +436,10 @@ fn type_check_expr(expr: &Expression, env: &mut TypeCheckEnv) -> TypeCheckResult
             let typed_args = type_check_func_args(&name, args, &arg_types, env)?;
 
             TypedExpression::FunctionCall(name.clone(), typed_args, ret_type)
+        }
+        Expression::ListIndex(list, index) => {
+            let (typed_list, typed_index, inner_type) = type_check_list_index(list, index, env)?;
+            TypedExpression::ListIndex(typed_list, typed_index, inner_type)
         }
         Expression::Variable(name) => match env.lookup_var(name) {
             Some(t) => TypedExpression::Variable(name.clone(), t),
@@ -577,6 +597,26 @@ fn type_check_comparison(
     Ok((Box::new(typed_a), Box::new(typed_b), type_a))
 }
 
+fn type_check_list_index(
+    list: &Expression,
+    index: &Expression,
+    env: &mut TypeCheckEnv,
+) -> TypeCheckResult<(Box<TypedExpression>, Box<TypedExpression>, Type)> {
+    let typed_list = type_check_expr(&list, env)?;
+    let typed_index = type_check_expr(&index, env)?;
+
+    let inner_type = match typed_list.get_type() {
+        Type::List(a) => *a,
+        t => return Err(TypeCheckError::IndexNonList(t)),
+    };
+
+    if typed_index.get_type() != Type::Integer {
+        return Err(TypeCheckError::ListIndexNotNumber(typed_index.get_type()));
+    }
+
+    Ok((Box::new(typed_list), Box::new(typed_index), inner_type))
+}
+
 fn type_check_branch_types(t1: Option<Type>, t2: Option<Type>) -> TypeCheckResult<Option<Type>> {
     if t1 == t2 {
         Ok(t1)
@@ -614,4 +654,35 @@ fn check_stmt_ret_types(
         }
     }
     Ok(existing)
+}
+
+fn type_check_list_literal(
+    exprs: &Vec<Expression>,
+    declared_type: Option<Type>,
+    env: &mut TypeCheckEnv,
+) -> TypeCheckResult<(Vec<TypedExpression>, Type)> {
+    let typed_exprs = exprs
+        .iter()
+        .map(|e| Ok(type_check_expr(e, env)?))
+        .collect::<TypeCheckResult<Vec<TypedExpression>>>()?;
+
+    if typed_exprs.len() == 0 && declared_type.is_none() {
+        return Err(TypeCheckError::InferListType);
+    }
+
+    let t = typed_exprs
+        .iter()
+        .fold(Ok(declared_type), |t, e| match t? {
+            Some(t) => {
+                if e.get_type() != t {
+                    Err(TypeCheckError::ListTypesDiffer)
+                } else {
+                    Ok(Some(t))
+                }
+            }
+            None => Ok(Some(e.get_type())),
+        })?
+        .expect("Failed to infer list type!"); // Should never happen as we either have a declared_type or the list should have elements
+
+    Ok((typed_exprs, t))
 }

@@ -127,6 +127,10 @@ pub enum InterpretError {
     NoSuchVar(Identifier),
     #[error("Cannot compare value `{0}` with value `{1}`")]
     CompareValueMismatch(Value, Value),
+    #[error("Expected list, got `{0}`")]
+    ListTypeMissmatch(Value),
+    #[error("Tried to get value outside of list bounds. List size: `{0}` Tried to get `{1}`")]
+    OutOfBounds(usize, i64),
     #[error("Error whilst executing builtin function: `{0}`")]
     BuiltinError(#[from] BuiltinError),
 }
@@ -239,11 +243,18 @@ fn eval_expression(expr: &TypedExpression, env: &mut InterpretEnv) -> InterpretR
         TypedExpression::IntegerLiteral(i) => Value::Integer(i.clone()),
         TypedExpression::BooleanLiteral(b) => Value::Boolean(b.clone()),
         TypedExpression::StringLiteral(s) => Value::String(s.clone()),
+        TypedExpression::ListLiteral(inner, _) => Value::List(
+            inner
+                .iter()
+                .map(|e| eval_expression(e, env))
+                .collect::<InterpretResult<Vec<Value>>>()?,
+        ),
         TypedExpression::Plus(a, b, _) => eval_arith(&a, &b, env, |a, b| a + b)?,
         TypedExpression::Minus(a, b, _) => eval_arith(&a, &b, env, |a, b| a - b)?,
         TypedExpression::Times(a, b, _) => eval_arith(&a, &b, env, |a, b| a * b)?,
         TypedExpression::Divide(a, b, _) => eval_arith(&a, &b, env, |a, b| a * b)?,
         TypedExpression::FunctionCall(name, args, _) => call_function(name, args, env)?,
+        TypedExpression::ListIndex(list, index, _) => get_val_at_list_index(list, index, env)?,
         TypedExpression::Variable(name, _) => env
             .lookup_var(name)
             .ok_or(InterpretError::NoSuchVar(name.clone()))?,
@@ -421,4 +432,28 @@ fn call_function(
             Ok(Value::Void)
         }
     }
+}
+
+fn get_val_at_list_index(
+    list: &TypedExpression,
+    index: &TypedExpression,
+    env: &mut InterpretEnv,
+) -> InterpretResult<Value> {
+    let index = eval_expression(index, env)?;
+    let index = match index {
+        Value::Integer(i) => i,
+        v => return Err(InterpretError::ValTypeError(Type::Integer, v)),
+    };
+
+    let list_val = eval_expression(list, env)?;
+    let list = match list_val {
+        Value::List(a) => a,
+        v => return Err(InterpretError::ListTypeMissmatch(v)),
+    };
+
+    if index as usize > list.len() - 1 || index < 0 {
+        return Err(InterpretError::OutOfBounds(list.len(), index));
+    }
+
+    Ok(list[index as usize].clone())
 }

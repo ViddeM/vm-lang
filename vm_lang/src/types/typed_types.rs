@@ -70,11 +70,13 @@ pub enum TypedExpression {
     IntegerLiteral(i64),
     BooleanLiteral(bool),
     StringLiteral(String),
+    ListLiteral(Vec<TypedExpression>, Type),
     Plus(Box<TypedExpression>, Box<TypedExpression>, Type),
     Minus(Box<TypedExpression>, Box<TypedExpression>, Type),
     Times(Box<TypedExpression>, Box<TypedExpression>, Type),
     Divide(Box<TypedExpression>, Box<TypedExpression>, Type),
     FunctionCall(Identifier, Vec<TypedExpression>, Type),
+    ListIndex(Box<TypedExpression>, Box<TypedExpression>, Type),
     Variable(Identifier, Type),
     Comparison(
         Box<TypedExpression>,
@@ -102,6 +104,14 @@ impl Display for TypedExpression {
                 TypedExpression::IntegerLiteral(i) => i.to_string(),
                 TypedExpression::BooleanLiteral(b) => b.to_string(),
                 TypedExpression::StringLiteral(s) => s.to_string(),
+                TypedExpression::ListLiteral(list, t) => format!(
+                    "{}[{}]",
+                    t,
+                    list.iter()
+                        .map(|v| v.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                ),
                 TypedExpression::Plus(a, b, _) => format!("{} + {}", a, b),
                 TypedExpression::Minus(a, b, _) => format!("{} - {}", a, b),
                 TypedExpression::Times(a, b, _) => format!("{} * {}", a, b),
@@ -114,6 +124,7 @@ impl Display for TypedExpression {
                         acc
                     })
                 ),
+                TypedExpression::ListIndex(list, index, _) => format!("{}[{}]", list, index),
                 TypedExpression::Variable(a, _) => format!("var {}", a),
                 TypedExpression::Comparison(a, b, comp, _) => format!("{} {} {}", a, comp, b),
                 TypedExpression::BooleanComparison(a, b, comp) => format!("{} {} {}", a, comp, b),
@@ -132,11 +143,13 @@ impl TypedExpression {
             TypedExpression::IntegerLiteral(_) => Type::Integer,
             TypedExpression::BooleanLiteral(_) => Type::Boolean,
             TypedExpression::StringLiteral(_) => Type::String,
+            TypedExpression::ListLiteral(_, t) => Type::List(Box::new(t.clone())),
             TypedExpression::Plus(_, _, t) => t.clone(),
             TypedExpression::Minus(_, _, t) => t.clone(),
             TypedExpression::Times(_, _, t) => t.clone(),
             TypedExpression::Divide(_, _, t) => t.clone(),
             TypedExpression::FunctionCall(_, _, t) => t.clone(),
+            TypedExpression::ListIndex(_, _, t) => t.clone(),
             TypedExpression::Variable(_, t) => t.clone(),
             TypedExpression::Comparison(_, _, _, t) => t.clone(),
             TypedExpression::BooleanComparison(_, _, _) => Type::Boolean,
