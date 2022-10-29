@@ -12,7 +12,7 @@ match {
     r"else" => ELSE,
     r"int" => INT,
     r"bool" => BOOL,
-    r"String" => STRING,
+    r"string" => STRING,
     r"return" => RETURN,
     r"for" => FOR,
     "(",
