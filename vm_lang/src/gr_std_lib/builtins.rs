@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, io};
+use std::{collections::HashMap, fs, io, num::ParseIntError};
 
 use crate::types::{
     core_types::{Identifier, Type},
@@ -31,6 +31,7 @@ pub fn default_function_definitions() -> Vec<&'static str> {
         "read_bool",
         "read_file",
         "split_string",
+        "parse_int",
     ]
 }
 
@@ -61,6 +62,10 @@ pub fn default_function_definitions_typechecker() -> HashMap<String, (Vec<Type>,
             vec![Type::String, Type::String],
             Type::List(Box::new(Type::String)),
         ),
+    );
+    default_functions.insert(
+        Identifier::from("parse_int"),
+        (vec![Type::String], Type::Integer),
     );
     default_functions
 }
@@ -119,12 +124,16 @@ pub fn execute_builtin<'a>(
             println!("Split on '{}'", split_on);
             return Ok(Value::List(
                 str.split(&split_on)
-                    .map(|s| {
-                        println!("Split part: {}", s);
-                        Value::String(s.to_string())
-                    })
+                    .map(|s| Value::String(s.to_string()))
                     .collect::<Vec<Value>>(),
             ));
+        }
+        "parse_int" => {
+            let str = get_string_arg(&mut args)?;
+            let number: i64 = str
+                .parse()
+                .or_else(|e: ParseIntError| Err(BuiltinError::Unknown(e.to_string())))?;
+            return Ok(Value::Integer(number));
         }
         _ => return Err(BuiltinError::NoSuchBuiltin(name.clone())),
     }
