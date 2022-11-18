@@ -63,6 +63,7 @@ impl<'a> InterpretEnv<'a> {
             }
             scopes.push(scope);
         }
+        scopes.reverse();
         scopes.into_iter().for_each(|s| self.vars.push(s));
         Ok(())
     }
