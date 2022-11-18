@@ -3,7 +3,6 @@ use vm_lang;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let file_path = args.get(1).expect("Expected filepath argument");
-    println!("Got filepath: {}", file_path);
 
     vm_lang::run_program(file_path, &mut |p| println!("{}", p), &mut || {
         let mut inp = String::new();

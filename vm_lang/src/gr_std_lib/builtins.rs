@@ -121,7 +121,6 @@ pub fn execute_builtin<'a>(
         "split_string" => {
             let str = get_string_arg(&mut args)?;
             let split_on = get_string_arg(&mut args)?;
-            println!("Split on '{}'", split_on);
             return Ok(Value::List(
                 str.split(&split_on)
                     .map(|s| Value::String(s.to_string()))
