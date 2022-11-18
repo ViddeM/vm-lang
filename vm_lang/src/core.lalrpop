@@ -180,6 +180,7 @@ Type: Type = {
     INT => Type::Integer,
     BOOL => Type::Boolean,
     STRING => Type::String,
+    ListType,
 }
 
 ListType: Type = {
