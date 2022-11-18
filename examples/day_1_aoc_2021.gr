@@ -1,0 +1,38 @@
+fn main() {
+    let a = read_file("examples/input.txt");
+    let rows = split_string(a, "
+");
+    let previous = 99999;
+    let count = 0;
+    for (row in rows) {
+        let parsed = parse_int(row);
+        if (parsed > previous) {
+            count++;
+        }
+        previous = parsed;
+    }
+
+    print_string("PART ONE");
+    print_number(count);
+
+    let first = -1;
+    let second = -1;
+    let third = -1;
+    count = 0;
+    for (row in rows) {
+        let curr = parse_int(row);
+        if (first >= 0) {
+            let first_sum = first + second + third;
+            let second_sum = second + third + curr;
+            if (second_sum > first_sum) {
+                count++;
+            }
+        }
+        first = second;
+        second = third;
+        third = curr;
+    }
+
+    print_string("PART TWO");
+    print_number(count);
+}

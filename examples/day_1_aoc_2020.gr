@@ -1,0 +1,39 @@
+fn main() {
+    let a = read_file("examples/day_1_aoc_2020_input.txt");
+    let rows = split_string(a, "
+");  
+
+    solve_part_one(rows);
+    solve_part_two(rows);
+}
+
+fn solve_part_one(rows: [string]) {
+    for (row in rows) {
+        let a = parse_int(row);
+        for (inner_row in rows) {
+            let b = parse_int(inner_row);
+            if (a + b == 2020) {
+                print_string("PART ONE");
+                print_number(a * b);
+                return;
+            }
+        }
+    }
+}
+
+fn solve_part_two(rows: [string]) {
+    for (row in rows) {
+        let a = parse_int(row);
+        for (middle_row in rows) {
+            let b = parse_int(middle_row);
+            for (inner_row in rows) {
+                let c = parse_int(inner_row);
+                if (a + b + c == 2020) {
+                    print_string("PART TWO");
+                    print_number(a * b * c);
+                    return;
+                }
+            }
+        }
+    }
+}
