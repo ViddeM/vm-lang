@@ -69,7 +69,7 @@ impl<'a> InterpretEnv<'a> {
     }
 
     fn lookup_var(&self, id: &Identifier) -> Option<Value> {
-        for scope in self.vars.iter() {
+        for scope in self.vars.iter().rev() {
             if let Some(val) = scope.get(id) {
                 return Some(val.clone());
             }
@@ -445,7 +445,6 @@ fn call_function(
                     args.len(),
                 ))?;
                 let val = eval_expression(a, env)?;
-                println!("Evaluated argument {} to {}", arg.name.clone(), val);
                 env.insert_var(arg.name.clone(), val)?;
             }
 

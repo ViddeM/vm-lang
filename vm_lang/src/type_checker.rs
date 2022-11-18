@@ -73,7 +73,7 @@ impl TypeCheckEnv {
     /// returns Some with its type,
     /// Otherwise returns none.
     fn lookup_var(&self, id: &Identifier) -> Option<Type> {
-        for scope in self.vars.iter() {
+        for scope in self.vars.iter().rev() {
             if let Some(t) = scope.get(id) {
                 return Some(t.clone());
             }
