@@ -195,13 +195,13 @@ fn eval_statement(stmt: &TypedStatement, env: &mut InterpretEnv) -> InterpretRes
         TypedStatement::For(id, expr, stmt) => {
             env.new_scope();
             let list = eval_expression(expr, env)?;
+            env.pop_scope();
             match list {
                 Value::List(list) => {
                     for elem in list.iter() {
                         env.new_scope();
                         env.insert_var(id.clone(), elem.clone())?;
                         if let Some(s) = eval_statement(stmt, env)? {
-                            env.pop_scope();
                             env.pop_scope();
                             return Ok(Some(s));
                         }
@@ -210,12 +210,14 @@ fn eval_statement(stmt: &TypedStatement, env: &mut InterpretEnv) -> InterpretRes
                 }
                 other => return Err(InterpretError::ListTypeError(other)),
             }
-            env.pop_scope();
             None
         }
         TypedStatement::If(expr, stmt) => {
             env.new_scope();
-            match eval_expression(&expr, env)? {
+            let expr_val = eval_expression(&expr, env)?;
+            env.pop_scope();
+            env.new_scope();
+            match expr_val {
                 Value::Boolean(true) => {
                     if let Some(s) = eval_statement(stmt, env)? {
                         return Ok(Some(s));
@@ -229,7 +231,10 @@ fn eval_statement(stmt: &TypedStatement, env: &mut InterpretEnv) -> InterpretRes
         }
         TypedStatement::IfElse(expr, if_stmt, else_stmt) => {
             env.new_scope();
-            match eval_expression(&expr, env)? {
+            let expr_val = eval_expression(&expr, env)?;
+            env.pop_scope();
+            env.new_scope();
+            match expr_val {
                 Value::Boolean(true) => {
                     if let Some(s) = eval_statement(if_stmt, env)? {
                         return Ok(Some(s));
@@ -242,6 +247,7 @@ fn eval_statement(stmt: &TypedStatement, env: &mut InterpretEnv) -> InterpretRes
                 }
                 v => return Err(InterpretError::ValTypeError(Type::Boolean, v)),
             }
+            env.pop_scope();
             None
         }
         TypedStatement::Return(expr_opt) => {
@@ -252,12 +258,14 @@ fn eval_statement(stmt: &TypedStatement, env: &mut InterpretEnv) -> InterpretRes
             Some(val)
         }
         TypedStatement::Block(stmts) => {
+            env.new_scope();
             for s in stmts.iter() {
                 if let Some(val) = eval_statement(s, env)? {
                     env.pop_scope();
                     return Ok(Some(val));
                 }
             }
+            env.pop_scope();
             None
         }
     })
