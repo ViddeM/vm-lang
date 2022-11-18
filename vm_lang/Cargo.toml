@@ -2,6 +2,8 @@
 name = "vm_lang"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "A simple interpreted language written in Rust."
 build = "src/build.rs" # LALRPOP Preprocessing
 
 [[bin]]
@@ -18,7 +20,9 @@ path = "src/lib.rs"
 lalrpop-util = { version = "^0.19", features = ["lexer"] }
 regex = "1"
 thiserror = "1.0"
-test_generator_macro = { path = "../test_generator_macro" }
 
 [build-dependencies]
 lalrpop = "0.19.7"
+
+[dev-dependencies]
+test_generator_macro = { path = "../test_generator_macro" }
