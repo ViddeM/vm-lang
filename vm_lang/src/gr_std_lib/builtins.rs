@@ -121,11 +121,11 @@ pub fn execute_builtin<'a>(
         "split_string" => {
             let str = get_string_arg(&mut args)?;
             let split_on = get_string_arg(&mut args)?;
-            return Ok(Value::List(
-                str.split(&split_on)
-                    .map(|s| Value::String(s.to_string()))
-                    .collect::<Vec<Value>>(),
-            ));
+            let list = str
+                .split(&split_on)
+                .map(|s| Value::String(s.to_string()))
+                .collect::<Vec<Value>>();
+            return Ok(Value::List(list));
         }
         "parse_int" => {
             let str = get_string_arg(&mut args)?;
