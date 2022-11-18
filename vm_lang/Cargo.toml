@@ -1,8 +1,8 @@
 [package]
 name = "vm_lang"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
-license = "MIT OR Apache-2.0"
+license = "AGPL-3.0"
 description = "A simple interpreted language written in Rust."
 build = "src/build.rs" # LALRPOP Preprocessing
 
