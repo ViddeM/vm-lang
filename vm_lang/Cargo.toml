@@ -5,6 +5,9 @@ edition = "2021"
 license = "AGPL-3.0"
 description = "A simple interpreted language written in Rust."
 build = "src/build.rs" # LALRPOP Preprocessing
+authors = ["Vidar Magnusson <crates.io@vidarmagnusson.com>"]
+readme = "../README.md"
+repository = "https://github.com/viddem/vm-lang"
 
 [[bin]]
 name = "vm_lang"
